@@ -46,6 +46,16 @@ public struct AnalyticsConfiguration: Sendable {
     /// level nor when events are uploaded.
     public var debug: Bool = AnalyticsConfiguration.defaultDebug
 
+    /// Hooks that see each event in list order before it is stored (Public API 4). Empty by
+    /// default. A hook returns the event, a changed copy of it, or `nil` to drop it. Automatic
+    /// events allow only new property values; `BeforeSend` has the rules. Fixed when the SDK is
+    /// created; runs on the thread that called the SDK.
+    ///
+    /// ```swift
+    /// config.beforeSend = [{ event in (event as? TrackEvent)?.name.hasPrefix("debug_") == true ? nil : event }]
+    /// ```
+    public var beforeSend: [BeforeSend] = []
+
     /// When events are uploaded.
     public var flush = FlushConfiguration()
 
@@ -159,6 +169,10 @@ public struct LoggingConfiguration: Sendable {
     /// Where log lines go. Default `nil`: unified logging with subsystem `com.rubicon.analytics`
     /// and category `Rubicon` (iOS Logging 1).
     public var logger: RubiconLogger?
+
+    /// Hears what became of each event: queued, sent or dropped (Logging 4c). Default `nil`. Meant
+    /// for QA screens in debug builds and for tests; called on the SDK's queues.
+    public var eventObserver: EventObserver?
 
     /// Whether the SDK sends the automatic `SDK Diagnostics` event, at most once an hour and only
     /// when it dropped events or met problems. Default `true`.

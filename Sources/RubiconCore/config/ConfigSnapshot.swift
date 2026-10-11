@@ -3,12 +3,13 @@ import Foundation
 /// The validated copy of an `AnalyticsConfiguration` that the SDK reads (Configuration 4, iOS
 /// Configuration 1). Taken once by the factory; later changes to the caller's value never reach
 /// it. Numbers are within their bounds, the host is normalized and parsed, and reserved headers are
-/// removed. `beforeSend` and `eventObserver` join in step 3.2 with their types.
+/// removed.
 package struct ConfigSnapshot: Sendable {
     package var apiKey: String
     package var host: String
     package var hostURL: URL
     package var debug: Bool
+    package var beforeSend: [BeforeSend]
     package var flushAt: Int
     package var flushIntervalMs: Int64
     package var immediateEvents: Set<String>
@@ -19,6 +20,7 @@ package struct ConfigSnapshot: Sendable {
     package var persistConsent: Bool
     package var logLevel: LogLevel
     package var logger: RubiconLogger?
+    package var eventObserver: EventObserver?
     package var sendDiagnostics: Bool
     package var headers: [String: String]
 

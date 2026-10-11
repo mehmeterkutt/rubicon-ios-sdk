@@ -1,6 +1,9 @@
 swift.enum Autocapture: enum Autocapture
 swift.enum Consent: enum Consent
 swift.enum ContextField: enum ContextField
+swift.enum DropReason: enum DropReason
+swift.enum EventSource: enum EventSource
+swift.enum EventUpdate: enum EventUpdate
 swift.enum LogLevel: enum LogLevel
 swift.enum PropertyValue: enum PropertyValue
 swift.enum.case Autocapture.appLifecycle: case appLifecycle
@@ -27,6 +30,21 @@ swift.enum.case ContextField.screenDensity: case screenDensity
 swift.enum.case ContextField.screenHeight: case screenHeight
 swift.enum.case ContextField.screenWidth: case screenWidth
 swift.enum.case ContextField.timezone: case timezone
+swift.enum.case DropReason.apiKeyChanged: case apiKeyChanged
+swift.enum.case DropReason.backpressure: case backpressure
+swift.enum.case DropReason.beforeSend: case beforeSend
+swift.enum.case DropReason.corrupt: case corrupt
+swift.enum.case DropReason.expired: case expired
+swift.enum.case DropReason.oversize: case oversize
+swift.enum.case DropReason.queueFull: case queueFull
+swift.enum.case DropReason.rejected: case rejected
+swift.enum.case DropReason.retryExhausted: case retryExhausted
+swift.enum.case DropReason.storageError: case storageError
+swift.enum.case EventSource.app: case app
+swift.enum.case EventSource.auto: case auto
+swift.enum.case EventUpdate.dropped(messageIds:reason:): case dropped(messageIds: [String], reason: DropReason)
+swift.enum.case EventUpdate.queued(_:): case queued(any Event)
+swift.enum.case EventUpdate.sent(messageIds:): case sent(messageIds: [String])
 swift.enum.case LogLevel.debug: case debug
 swift.enum.case LogLevel.error: case error
 swift.enum.case LogLevel.info: case info
@@ -50,6 +68,7 @@ swift.init PrivacyConfiguration.init(): init()
 swift.init SessionConfiguration.init(): init()
 swift.property AnalyticsConfiguration.apiKey: let apiKey: String
 swift.property AnalyticsConfiguration.autocapture: var autocapture: AutocaptureConfiguration
+swift.property AnalyticsConfiguration.beforeSend: var beforeSend: [BeforeSend]
 swift.property AnalyticsConfiguration.context: var context: ContextConfiguration
 swift.property AnalyticsConfiguration.debug: var debug: Bool
 swift.property AnalyticsConfiguration.description: var description: String { get }
@@ -59,26 +78,102 @@ swift.property AnalyticsConfiguration.logging: var logging: LoggingConfiguration
 swift.property AnalyticsConfiguration.network: var network: NetworkConfiguration
 swift.property AnalyticsConfiguration.privacy: var privacy: PrivacyConfiguration
 swift.property AnalyticsConfiguration.session: var session: SessionConfiguration
+swift.property AppContext.build: let build: String?
+swift.property AppContext.name: let name: String?
+swift.property AppContext.namespace: let namespace: String?
+swift.property AppContext.version: let version: String?
 swift.property AutocaptureConfiguration.enabled: var enabled: Set<Autocapture>
 swift.property ContextConfiguration.disabledFields: var disabledFields: Set<ContextField>
+swift.property DeviceContext.isEmulator: let isEmulator: Bool?
+swift.property DeviceContext.manufacturer: let manufacturer: String?
+swift.property DeviceContext.model: let model: String?
+swift.property DeviceContext.type: let type: String?
+swift.property Event.context: var context: EventContext { get }
+swift.property Event.deviceId: var deviceId: String { get }
+swift.property Event.messageId: var messageId: String { get }
+swift.property Event.source: var source: EventSource { get }
+swift.property Event.timestamp: var timestamp: Date { get }
+swift.property Event.userId: var userId: String? { get }
+swift.property EventContext.app: let app: AppContext
+swift.property EventContext.description: var description: String { get }
+swift.property EventContext.device: let device: DeviceContext
+swift.property EventContext.library: let library: LibraryContext
+swift.property EventContext.locale: let locale: String?
+swift.property EventContext.network: let network: NetworkContext
+swift.property EventContext.os: let os: OsContext
+swift.property EventContext.screen: let screen: ScreenContext
+swift.property EventContext.session: let session: SessionContext?
+swift.property EventContext.timezone: let timezone: String?
+swift.property EventUpdate.description: var description: String { get }
 swift.property FlushConfiguration.at: var at: Int
 swift.property FlushConfiguration.immediateEvents: var immediateEvents: Set<String>
 swift.property FlushConfiguration.intervalMs: var intervalMs: Int64
+swift.property IdentifyEvent.context: let context: EventContext
+swift.property IdentifyEvent.description: var description: String { get }
+swift.property IdentifyEvent.deviceId: let deviceId: String
+swift.property IdentifyEvent.messageId: let messageId: String
+swift.property IdentifyEvent.source: let source: EventSource
+swift.property IdentifyEvent.timestamp: let timestamp: Date
+swift.property IdentifyEvent.traits: var traits: [String : PropertyValue]
+swift.property IdentifyEvent.userId: let userId: String?
+swift.property LibraryContext.name: let name: String
+swift.property LibraryContext.version: let version: String
+swift.property LoggingConfiguration.eventObserver: var eventObserver: EventObserver?
 swift.property LoggingConfiguration.level: var level: LogLevel
 swift.property LoggingConfiguration.logger: var logger: RubiconLogger?
 swift.property LoggingConfiguration.sendDiagnostics: var sendDiagnostics: Bool
 swift.property NetworkConfiguration.headers: var headers: [String : String]
+swift.property NetworkContext.type: let type: String?
+swift.property OsContext.name: let name: String?
+swift.property OsContext.version: let version: String?
 swift.property PrivacyConfiguration.defaultConsent: var defaultConsent: Consent
 swift.property PrivacyConfiguration.persistConsent: var persistConsent: Bool
+swift.property ScreenContext.density: let density: Double?
+swift.property ScreenContext.height: let height: Int?
+swift.property ScreenContext.width: let width: Int?
+swift.property ScreenEvent.context: let context: EventContext
+swift.property ScreenEvent.description: var description: String { get }
+swift.property ScreenEvent.deviceId: let deviceId: String
+swift.property ScreenEvent.messageId: let messageId: String
+swift.property ScreenEvent.name: var name: String
+swift.property ScreenEvent.properties: var properties: [String : PropertyValue]
+swift.property ScreenEvent.source: let source: EventSource
+swift.property ScreenEvent.timestamp: let timestamp: Date
+swift.property ScreenEvent.userId: let userId: String?
 swift.property SessionConfiguration.backgroundTimeoutMs: var backgroundTimeoutMs: Int64
+swift.property SessionContext.id: let id: String
+swift.property SessionContext.startedAt: let startedAt: Date
+swift.property TrackEvent.context: let context: EventContext
+swift.property TrackEvent.description: var description: String { get }
+swift.property TrackEvent.deviceId: let deviceId: String
+swift.property TrackEvent.messageId: let messageId: String
+swift.property TrackEvent.name: var name: String
+swift.property TrackEvent.properties: var properties: [String : PropertyValue]
+swift.property TrackEvent.source: let source: EventSource
+swift.property TrackEvent.timestamp: let timestamp: Date
+swift.property TrackEvent.userId: let userId: String?
+swift.protocol Event: protocol Event : Sendable
 swift.struct AnalyticsConfiguration: struct AnalyticsConfiguration
+swift.struct AppContext: struct AppContext
 swift.struct AutocaptureConfiguration: struct AutocaptureConfiguration
 swift.struct ContextConfiguration: struct ContextConfiguration
+swift.struct DeviceContext: struct DeviceContext
+swift.struct EventContext: struct EventContext
 swift.struct FlushConfiguration: struct FlushConfiguration
+swift.struct IdentifyEvent: struct IdentifyEvent
+swift.struct LibraryContext: struct LibraryContext
 swift.struct LoggingConfiguration: struct LoggingConfiguration
 swift.struct NetworkConfiguration: struct NetworkConfiguration
+swift.struct NetworkContext: struct NetworkContext
+swift.struct OsContext: struct OsContext
 swift.struct PrivacyConfiguration: struct PrivacyConfiguration
+swift.struct ScreenContext: struct ScreenContext
+swift.struct ScreenEvent: struct ScreenEvent
 swift.struct SessionConfiguration: struct SessionConfiguration
+swift.struct SessionContext: struct SessionContext
+swift.struct TrackEvent: struct TrackEvent
 swift.type.property AnalyticsConfiguration.defaultDebug: static let defaultDebug: Bool
 swift.type.property AnalyticsConfiguration.defaultHost: static let defaultHost: String
+swift.typealias BeforeSend: typealias BeforeSend = @Sendable (any Event) -> (any Event)?
+swift.typealias EventObserver: typealias EventObserver = @Sendable (EventUpdate) -> Void
 swift.typealias RubiconLogger: typealias RubiconLogger = @Sendable (_ level: LogLevel, _ message: String, _ error: (any Error)?) -> Void

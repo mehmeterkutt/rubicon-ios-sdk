@@ -69,12 +69,14 @@ package enum ConfigValidator {
         var snapshot: ConfigSnapshot?
         if apiKeyValid, let host, let hostURL {
             snapshot = ConfigSnapshot(
-                apiKey: config.apiKey, host: host, hostURL: hostURL, debug: config.debug, flushAt: Int(flushAt),
+                apiKey: config.apiKey, host: host, hostURL: hostURL, debug: config.debug, beforeSend: config.beforeSend,
+                flushAt: Int(flushAt),
                 flushIntervalMs: flushIntervalMs, immediateEvents: config.flush.immediateEvents,
                 sessionBackgroundTimeoutMs: backgroundTimeoutMs, autocapture: config.autocapture.enabled,
                 disabledFields: config.context.disabledFields, defaultConsent: config.privacy.defaultConsent,
                 persistConsent: config.privacy.persistConsent, logLevel: config.logging.level,
-                logger: config.logging.logger, sendDiagnostics: config.logging.sendDiagnostics, headers: headers)
+                logger: config.logging.logger, eventObserver: config.logging.eventObserver,
+                sendDiagnostics: config.logging.sendDiagnostics, headers: headers)
         }
         return Result(snapshot: snapshot, issues: issues)
     }
