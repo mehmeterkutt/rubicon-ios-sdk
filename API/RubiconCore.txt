@@ -1,5 +1,6 @@
 swift.enum ContextField: enum ContextField
 swift.enum LogLevel: enum LogLevel
+swift.enum PropertyValue: enum PropertyValue
 swift.enum.case ContextField.appBuild: case appBuild
 swift.enum.case ContextField.appName: case appName
 swift.enum.case ContextField.appNamespace: case appNamespace
@@ -21,5 +22,12 @@ swift.enum.case LogLevel.error: case error
 swift.enum.case LogLevel.info: case info
 swift.enum.case LogLevel.off: case off
 swift.enum.case LogLevel.warn: case warn
+swift.enum.case PropertyValue.array(_:): case array([PropertyValue])
+swift.enum.case PropertyValue.bool(_:): case bool(Bool)
+swift.enum.case PropertyValue.double(_:): case double(Double)
+swift.enum.case PropertyValue.int(_:): case int(Int64)
+swift.enum.case PropertyValue.null: case null
+swift.enum.case PropertyValue.object(_:): case object([String : PropertyValue])
+swift.enum.case PropertyValue.string(_:): case string(String)
 swift.func.op LogLevel.<(_:_:): static func < (lhs: LogLevel, rhs: LogLevel) -> Bool
 swift.typealias RubiconLogger: typealias RubiconLogger = @Sendable (_ level: LogLevel, _ message: String, _ error: (any Error)?) -> Void

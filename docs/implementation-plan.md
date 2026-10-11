@@ -681,7 +681,7 @@ without a test blocks the release.
 | iOS Disk 1 | Host protection class inherited; the locked state | 4.1, 4.2, 6.3b, 7.1 | `FakeFileSystemTests` (`locked` is `permissionDenied` for every operation but `exists`), `PosixFileSystemTests` (`notFound` apart from I/O errors); the store states in 4.1 |
 | iOS Disk 2 | `F_FULLFSYNC` with `fsync` fallback | 4.1 | |
 | iOS Disk 3 | No timestamps, sizes in memory, one startup size read, no disk space API | 4.2, 7.8 | |
-| iOS Serialization 1 | `JSONSerialization` with `.sortedKeys`; the number text warning; structural golden | 2.4, 8.4 | |
+| iOS Serialization 1 | `JSONSerialization` with `.sortedKeys`; the number text warning; structural golden | 2.4, 8.4 | `JsonTests` (every value type, sorted compact output, `{"coupon":null}`, the pinned behaviours `50`, `\/`, `49.899999999999999`, `1e+21`, NaN refused; round trips; `JSONDecoder` as the independent parser; typed reads; fragments and trailing content rejected) |
 | iOS Serialization 2 | The Swift conversion table; the enum caveat | 2.5 | |
 | iOS Serialization 3 | `ISO8601DateFormatter`, range rule, Android vectors | 2.3 | `IsoDatesTests` (the Android vectors incl. years 0000 and 9999, range rule, 100 000 instants against `Calendar` from 1583 on, day round trip over the range); see the 2026-10-11 log row on the Julian cutover |
 | iOS HTTP 1 | Ephemeral session, 20 s and 45 s, redirects refused, semaphore | 5.1 | |
@@ -703,7 +703,7 @@ without a test blocks the release.
 - [x] 2.1 Platform protocols and test fixtures
 - [x] 2.2 Logging infrastructure
 - [x] 2.3 Identifiers and time
-- [ ] 2.4 JSON layer
+- [x] 2.4 JSON layer
 - [ ] 2.5 Property validation and normalization
 - [ ] 3.1 Configuration
 - [ ] 3.2 Event model and public types
@@ -776,6 +776,8 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-11 | 2.3 | ISO formatter: Foundation diverges before 1582 | The Android vectors caught it on the first run: `ISO8601DateFormatter` (and `Calendar(.gregorian)`) switch to the Julian calendar before 1582-10-15 and write `0001-01-03T00:00:00.000Z` for `0000-01-01`, so the fallback named on iOS Serialization 3 applies: `IsoDates` is the port of the Android calendar arithmetic (proleptic Gregorian, locale-free, thread-safe), not the Foundation formatter. The range rule and the vectors are unchanged; the random comparison against `Calendar` runs from 1583 on and the day arithmetic round-trips over the whole range. The iOS Serialization page's decision 3 should say so; asked of the user in the step report. | iOS Serialization 3 (page edit pending the user) |
 | 2026-10-11 | 2.3 | Random draws of the id generator | `RandomSource` has one method, `nextUInt64()`; the counter seed takes the low bits of one draw and the tail the low 32 bits of another, in the Android order (seed first, tail second). Kotlin's `Random` sequence is not reproduced; the Android tests are property tests and port unchanged, and `ScriptedRandom` gives known ids for an exact vector. | - |
 | 2026-10-11 | 2.3 | HTTP dates | `HttpDates.parse` is the Android parser over the same `daysFromCivil`, including the obsolete-form, day-name and leap-second rules of Android log 2.3; `Hashing.sha256Hex` uses `CryptoKit`. | - |
+| 2026-10-11 | 2.4 | `Json.write` on a non-finite double | Throws `JsonError.notFinite(path:)` naming the path, the Swift form of Android's `IllegalArgumentException`: the normalizer never produces one, so a throw there is a caller bug, and the serializer will treat it as such. | - |
+| 2026-10-11 | 2.4 | What `JSONSerialization` accepts and writes | Confirmed by the pinned tests on this Foundation: top-level fragments (`12`, `"text"`, `null`) and trailing content after an object are rejected without options, so the Android "trailing content is corrupt" rule needs no extra check; integers read back as `NSNumber` with an integral `objCType` and `50` written from `50.0` reads back as `.int(50)`; `1.5e-7` is written as `1.4999999999999999e-07`. `PropertyValue` is defined in this step, since the writer takes it; the normalizer that produces it is 2.5. | - |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release
