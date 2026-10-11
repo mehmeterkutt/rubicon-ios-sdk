@@ -5,6 +5,10 @@ import Foundation
 package protocol HttpTransport: Sendable {
     func execute(_ request: HttpRequest) -> HttpResult
 
+    /// Cancels the request in flight, if any, from another thread: the background task's expiration
+    /// (iOS Queue 2). `execute` then returns `.networkFailure(.cancelled, ...)`.
+    func cancelCurrent()
+
     /// Ends the transport's session when the instance shuts down (`invalidateAndCancel`).
     func shutdown()
 }

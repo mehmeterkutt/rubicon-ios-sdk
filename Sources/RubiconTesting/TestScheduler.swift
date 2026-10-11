@@ -38,6 +38,10 @@ package final class TestScheduler: Scheduler, @unchecked Sendable {
         state.current.now
     }
 
+    /// An elapsed clock that reads this scheduler's virtual time, for components whose waits are
+    /// scheduled here and measured there (the retry policy under the uploader).
+    package var elapsedClock: any ElapsedClock { VirtualElapsedClock(scheduler: self) }
+
     /// Work that has not run yet, cancelled items excluded.
     package var pendingCount: Int {
         state.current.items.filter { !$0.cancelled.isSet }.count
@@ -107,4 +111,10 @@ package final class TestScheduler: Scheduler, @unchecked Sendable {
             flag.set()
         }
     }
+}
+
+private struct VirtualElapsedClock: ElapsedClock {
+    let scheduler: TestScheduler
+
+    func elapsedMillis() -> Int64 { scheduler.nowMillis }
 }

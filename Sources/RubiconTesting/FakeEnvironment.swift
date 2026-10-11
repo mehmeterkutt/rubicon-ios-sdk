@@ -255,6 +255,7 @@ package final class FakeTransport: HttpTransport, @unchecked Sendable {
         var script: [HttpResult] = []
         var requests: [HttpRequest] = []
         var shutdowns = 0
+        var cancels = 0
     }
 
     private let whenEmpty: HttpResult
@@ -268,6 +269,7 @@ package final class FakeTransport: HttpTransport, @unchecked Sendable {
     /// The requests received so far, oldest first.
     package var requests: [HttpRequest] { state.current.requests }
     package var shutdowns: Int { state.current.shutdowns }
+    package var cancels: Int { state.current.cancels }
 
     package func enqueue(_ results: HttpResult...) {
         state.withLock { $0.script.append(contentsOf: results) }
@@ -278,6 +280,10 @@ package final class FakeTransport: HttpTransport, @unchecked Sendable {
             s.requests.append(request)
             return s.script.isEmpty ? whenEmpty : s.script.removeFirst()
         }
+    }
+
+    package func cancelCurrent() {
+        state.withLock { $0.cancels += 1 }
     }
 
     package func shutdown() {

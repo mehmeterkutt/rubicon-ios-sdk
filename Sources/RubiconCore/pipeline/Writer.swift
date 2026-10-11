@@ -99,10 +99,13 @@ package final class Writer: @unchecked Sendable {
 
     private let channel = Locked(Channel())
 
-    /// Conflated: any number of flushes during an upload become one follow-up upload (Queue 1).
+    /// Raised by every flush; the uploader conflates wakes into one drain (Queue 1). Tests read it.
     private let uploadSignal = AtomicFlag()
-    /// What the uploader runs when the signal is raised; set once by the uploader (step 6.4).
+    /// What a flush wakes: the uploader's `signal()`, wired by the factory (step 6.4, 6.7).
     package let onUploadSignal = Locked<(@Sendable () -> Void)?>(nil)
+    /// What the writer runs once the stores are loaded and the event store is open: the uploader's
+    /// startup, wired by the factory (step 6.4, 6.7).
+    package let onReady = Locked<(@Sendable () -> Void)?>(nil)
 
     private let startedFlag = AtomicFlag()
     private let readyFlag = AtomicFlag()
@@ -322,6 +325,7 @@ package final class Writer: @unchecked Sendable {
             autocapture: snapshot.autocapture)
         storesLoaded = true
         readyFlag.set()
+        onReady.current?()
         appendSessionEvents(sessions.start())
         appendedSinceFlush = eventStore.pendingCount
         if appendedSinceFlush > 0 { startInterval() }
@@ -479,7 +483,8 @@ package final class Writer: @unchecked Sendable {
         interval = nil
         appendedSinceFlush = 0
         eventStore.closeOpenSegment()
-        if uploadSignal.set() { onUploadSignal.current?() }
+        uploadSignal.set()
+        onUploadSignal.current?()
         log.debug { "Flush (\(reason)), \(eventStore.pendingCount) events pending" }
     }
 
