@@ -655,10 +655,10 @@ without a test blocks the release.
 | iOS Public API 1 | Swift-first API, `RubiconObjC` wrapper in the first release | 1.1, 7.7 | `RubiconObjCTests` (Objective-C, XCTest) runs on the simulator; `ObjCApp` compiles `@import RubiconObjC` |
 | iOS Public API 2 | iOS 15, tools 6.0, no `#available` | 1.1 | `check.sh` builds every target for `arm64-apple-ios15.0-simulator`; source rule `no-available` with its self-test |
 | iOS Public API 3 | Swift 6 mode, `Sendable` public types, `@Sendable` hooks, no `async`; Swift 5 and 6 clients | 1.1, 3.2, 8.2 | `swiftLanguageModes: [.v6]`; `Swift5App` and `Swift6App` (strict concurrency, warnings as errors) build; source rules `no-async-public-api`, `no-task-public-api`, `unjustified-unchecked-sendable` |
-| iOS Public API 4 | `RubiconAnalytics.make(configuration:) -> any Analytics` | 7.1 | |
+| iOS Public API 4 | `RubiconAnalytics.make(configuration:) -> any Analytics` | 7.1 | `NoOpAnalyticsTests` (a fake conforms in a few lines; the no-op reports opted out and an empty id); the factory in 7.1 |
 | iOS Public API 5 | `[String: Any]` to `PropertyValue`, `CFBooleanGetTypeID` | 2.5 | `PropertyNormalizerConversionTests` (the four boxed-boolean cases, `PropertyValue` as the output); the `[String: Any]` entry points in 3.3 |
 | iOS Public API 6 | `BeforeSend` closure, value-type `Event`, no `throws`; wrapper catches `NSException` | 3.2, 6.3a, 7.7 | `EventModelTests` (a hook mutates its copy, the original is unchanged), `HookRulesTests`; the pipeline in 6.3a |
-| iOS Public API 7 | Labels, properties, `Analytics`, `RubiconAnalytics`, `Rubicon`, `RBN` | 3.3, 7.7 | |
+| iOS Public API 7 | Labels, properties, `Analytics`, `RubiconAnalytics`, `Rubicon`, `RBN` | 3.3, 7.7 | `NoOpAnalyticsTests` (the twelve verbs and two properties, unlabeled first arguments, default arguments through the protocol extension), `API/RubiconCore.txt` |
 | iOS Public API 8 | Three targets, iOS only, SwiftPM, zero dependencies, API diff | 1.1 | `Package.swift` has no dependencies; `api-diff.sh` records the public symbols per module in `API/` and runs `diagnose-api-breaking-changes` once a tag exists; source rule `no-uikit-outside-rubicon` |
 | iOS Event Model 1 | Protocol with three structs | 3.2 | `EventModelTests` (copy semantics, fixed fields constant, descriptions, Sendable), `HookRulesTests` (own kind, fixed fields, automatic rules, foreign conformance) |
 | iOS Event Model 2 | `Date` in memory, epoch ms on the wire | 3.2, 2.4 | `EventGoldenTests` (`timestamp` and `started_at` as epoch milliseconds from `Date`) |
@@ -707,7 +707,7 @@ without a test blocks the release.
 - [x] 2.5 Property validation and normalization
 - [x] 3.1 Configuration
 - [x] 3.2 Event model and public types
-- [ ] 3.3 The `Analytics` protocol
+- [x] 3.3 The `Analytics` protocol
 - [ ] 4.1 Key-value stores
 - [ ] 4.2 Event store
 - [ ] 5.1 HTTP transport
@@ -787,6 +787,7 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-12 | 3.2 | Golden files and the two Android-only context fields | The golden files stay the Android ones verbatim (Serialization 5). iOS never writes `context.os.api_level` or `context.network.carrier` (iOS Context 1), so the test's structural comparison removes those two keys from the file before comparing, and nothing else; the sample events carry the file's other values (`Android`, `Pixel 8`, `rubicon-android`) as test data. | `SampleEvents.removingAndroidOnlyFields` |
 | 2026-10-12 | 3.2 | Where the hook-result rule lives | `HookRules.check(_:against:)` in the core, next to the types: `nil` only for app events, own kind (a foreign `Event` conformance is `otherKind`), fixed fields equal, automatic events keep name and top-level keys, names valid. The pipeline (6.3a) maps a violation to `before_send` and `HOOK_VIOLATION`. | Step 6.3a |
 | 2026-10-12 | 3.2 | `EventUpdate` is not `Equatable` | It carries `any Event`; tests compare its `description` or pattern-match. `TrackEvent`, `ScreenEvent`, `IdentifyEvent` and the context structs are `Equatable` for the tests and the hook rule. | - |
+| 2026-10-12 | 3.3 | Default arguments on a protocol | Swift protocol requirements take no defaults, so `track(_:)`, `screen(_:)`, `identify(_:)` and `trackDeepLink(_:)` are overloads in a protocol extension that forward to the requirements; a fake implements only the fourteen requirements. `register(_:value:)` takes `Any`, with `NSNull` for `null`, as iOS Public API 7 lists it. The two `trackDeepLink` methods are protocol requirements (iOS Lifecycle 3), so a fake must implement them too. | - |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release

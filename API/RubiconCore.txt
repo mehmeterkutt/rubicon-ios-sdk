@@ -66,6 +66,24 @@ swift.init LoggingConfiguration.init(): init()
 swift.init NetworkConfiguration.init(): init()
 swift.init PrivacyConfiguration.init(): init()
 swift.init SessionConfiguration.init(): init()
+swift.method Analytics.clearLocalData(): func clearLocalData()
+swift.method Analytics.flush(): func flush()
+swift.method Analytics.identify(_:): func identify(_ userId: String)
+swift.method Analytics.identify(_:traits:): func identify(_ userId: String, traits: [String : Any])
+swift.method Analytics.optIn(): func optIn()
+swift.method Analytics.optOut(): func optOut()
+swift.method Analytics.register(_:value:): func register(_ key: String, value: Any)
+swift.method Analytics.reset(): func reset()
+swift.method Analytics.screen(_:): func screen(_ name: String)
+swift.method Analytics.screen(_:properties:): func screen(_ name: String, properties: [String : Any])
+swift.method Analytics.track(_:): func track(_ name: String)
+swift.method Analytics.track(_:properties:): func track(_ name: String, properties: [String : Any])
+swift.method Analytics.trackDeepLink(_:): func trackDeepLink(_ activity: NSUserActivity)
+swift.method Analytics.trackDeepLink(_:): func trackDeepLink(_ url: URL)
+swift.method Analytics.trackDeepLink(_:referrer:): func trackDeepLink(_ url: URL, referrer: String?)
+swift.method Analytics.unregister(_:): func unregister(_ key: String)
+swift.property Analytics.deviceId: var deviceId: String { get }
+swift.property Analytics.isOptedOut: var isOptedOut: Bool { get }
 swift.property AnalyticsConfiguration.apiKey: let apiKey: String
 swift.property AnalyticsConfiguration.autocapture: var autocapture: AutocaptureConfiguration
 swift.property AnalyticsConfiguration.beforeSend: var beforeSend: [BeforeSend]
@@ -152,6 +170,7 @@ swift.property TrackEvent.properties: var properties: [String : PropertyValue]
 swift.property TrackEvent.source: let source: EventSource
 swift.property TrackEvent.timestamp: let timestamp: Date
 swift.property TrackEvent.userId: let userId: String?
+swift.protocol Analytics: protocol Analytics : Sendable
 swift.protocol Event: protocol Event : Sendable
 swift.struct AnalyticsConfiguration: struct AnalyticsConfiguration
 swift.struct AppContext: struct AppContext
