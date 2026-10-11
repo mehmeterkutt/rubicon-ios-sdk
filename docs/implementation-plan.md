@@ -666,7 +666,7 @@ without a test blocks the release.
 | iOS Configuration 1 | Struct, no freezing | 3.1 | `ConfigurationDefaultsTests`, `ConfigValidatorTests` (value semantics: later writes never reach the snapshot; every value reaches it) |
 | iOS Configuration 2 | `debug` default from the build flag; `developerError` | 3.1, 2.2 | `ConfigurationDefaultsTests` (`defaultDebug` follows `#if DEBUG`; the nightly release-configuration run flips it), `ConfigValidatorTests` (developer errors recorded in debug, clamping and logging in release) |
 | iOS Configuration 3 | `host: String` validated | 3.1 | `ConfigValidatorTests` (the Android host table accepted and rejected, trailing slash, `http://` WARN naming App Transport Security) |
-| iOS Identity 1 | Files excluded from backup; no Keychain, no IDFV | 4.1, 7.1 | |
+| iOS Identity 1 | Files excluded from backup; no Keychain, no IDFV | 4.1, 7.1 | `DeviceStoreTests` (a missing file gets a new id from the shared generator's closure; unreadable keeps a temporary id and never writes; locked mints nothing), `FileKeyValueStoreTests` (directory excluded from backup) |
 | iOS Context 1 | Field sources; no `api_level`, no `carrier`; the locale rule; sixteen fields | 7.3 | |
 | iOS Context 2 | `screen` static; network type from the shared monitor | 7.2, 7.3 | |
 | iOS Session 1 | `willEnterForeground`, `didEnterBackground`, startup `applicationState` | 7.4, 6.2 | |
@@ -678,8 +678,8 @@ without a test blocks the release.
 | iOS Lifecycle 5 | `RubiconNetworkObserver` | 7.6 | |
 | iOS Queue 1 | Two serial queues, bounded channel, atomic flag, `Scheduler` | 2.1, 6.3b, 6.4 | `TestSchedulerTests` (due order, never early, cancellation, re-entrant work), `GCDSchedulerTests` (serial per worker, `assertOn`) |
 | iOS Queue 2 | Background task, expiration cancels, `willTerminate`, `.appex` no-op | 6.3b, 6.4, 7.1, 7.4, 8.3 | |
-| iOS Disk 1 | Host protection class inherited; the locked state | 4.1, 4.2, 6.3b, 7.1 | `FakeFileSystemTests` (`locked` is `permissionDenied` for every operation but `exists`), `PosixFileSystemTests` (`notFound` apart from I/O errors); the store states in 4.1 |
-| iOS Disk 2 | `F_FULLFSYNC` with `fsync` fallback | 4.1 | |
+| iOS Disk 1 | Host protection class inherited; the locked state | 4.1, 4.2, 6.3b, 7.1 | `FakeFileSystemTests` (`locked` is `permissionDenied` for every operation but `exists`), `PosixFileSystemTests` (`notFound` apart from I/O errors); `FileKeyValueStoreTests`, `DeviceStoreTests`, `PersonStoreTests` (`locked` reads and writes: nothing loaded, nothing minted, nothing counted, the change kept and written after unlock); the writer's handling in 6.3b |
+| iOS Disk 2 | `F_FULLFSYNC` with `fsync` fallback | 4.1 | `FileKeyValueStoreTests` (a failed sync never reaches the file; `.tmp`, sync, rename); `PosixFileSystemTests` (`F_FULLFSYNC` with the `fsync` fallback flag) |
 | iOS Disk 3 | No timestamps, sizes in memory, one startup size read, no disk space API | 4.2, 7.8 | |
 | iOS Serialization 1 | `JSONSerialization` with `.sortedKeys`; the number text warning; structural golden | 2.4, 8.4 | `JsonTests` (every value type, sorted compact output, `{"coupon":null}`, the pinned behaviours `50`, `\/`, `49.899999999999999`, `1e+21`, NaN refused; round trips; `JSONDecoder` as the independent parser; typed reads; fragments and trailing content rejected) |
 | iOS Serialization 2 | The Swift conversion table; the enum caveat | 2.5 | `PropertyNormalizerConversionTests` (one test per row: integer widths, `UInt64` over range, `Float` and `Decimal` text, `CGFloat`, `Character`, `Date`, `URL`, enums incl. the `CustomStringConvertible` and `@objc` caveats, sets and slices, non-string keys, bridged lone surrogate, unsupported types), `PropertyNormalizerLimitTests` (every limit at, below and above), `PropertyProblemReportingTests`, `PropertyNormalizerFuzzTests` |
@@ -708,7 +708,7 @@ without a test blocks the release.
 - [x] 3.1 Configuration
 - [x] 3.2 Event model and public types
 - [x] 3.3 The `Analytics` protocol
-- [ ] 4.1 Key-value stores
+- [x] 4.1 Key-value stores
 - [ ] 4.2 Event store
 - [ ] 5.1 HTTP transport
 - [ ] 5.2 Retry policy and backoff
@@ -788,6 +788,8 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-12 | 3.2 | Where the hook-result rule lives | `HookRules.check(_:against:)` in the core, next to the types: `nil` only for app events, own kind (a foreign `Event` conformance is `otherKind`), fixed fields equal, automatic events keep name and top-level keys, names valid. The pipeline (6.3a) maps a violation to `before_send` and `HOOK_VIOLATION`. | Step 6.3a |
 | 2026-10-12 | 3.2 | `EventUpdate` is not `Equatable` | It carries `any Event`; tests compare its `description` or pattern-match. `TrackEvent`, `ScreenEvent`, `IdentifyEvent` and the context structs are `Equatable` for the tests and the hook rule. | - |
 | 2026-10-12 | 3.3 | Default arguments on a protocol | Swift protocol requirements take no defaults, so `track(_:)`, `screen(_:)`, `identify(_:)` and `trackDeepLink(_:)` are overloads in a protocol extension that forward to the requirements; a fake implements only the fourteen requirements. `register(_:value:)` takes `Any`, with `NSNull` for `null`, as iOS Public API 7 lists it. The two `trackDeepLink` methods are protocol requirements (iOS Lifecycle 3), so a fake must implement them too. | - |
+| 2026-10-12 | 4.1 | The locked state in the stores | `KeyValueRead` has `missing`, `unreadable`, `locked` and `present`; `KeyValueWrite` has `done`, `locked` and `failed`. A `StoreFile` met by `locked` on load stays unloaded with a DEBUG line (no WARN, no count, no temporary id) and `load()` returns `false` for the writer to call again on `protectedDataDidBecomeAvailable`; a locked write keeps the value dirty with a DEBUG line and no `STORAGE_WRITE_FAILED`. The stores' `state` is optional and `nil` until loaded. Open for the user: what `Analytics.deviceId` and `isOptedOut` answer before the first unlock (the only case where `readEarly` finds the device locked); recommended `""` and `defaultConsent`'s answer, with the real values once the writer loads. | iOS Disk 1 (as decided); the getters in 6.7 |
+| 2026-10-12 | 4.1 | Shapes carried over, with iOS types | `device.json`, `person.json` and `remote-config.json` keep the Android keys and the Android rules for unreadable files (Android log 4.1); `last_failure` may be `cancelled` (iOS Retry 2). In memory the wall-clock fields are `Date` (iOS Event Model 2), written as epoch milliseconds; counters saturate at `Int32.max`, the Android `Int.MAX_VALUE`, so the two files agree. Files are created with mode `0600`; the backup exclusion is set on the first write of the root directory. | - |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release
