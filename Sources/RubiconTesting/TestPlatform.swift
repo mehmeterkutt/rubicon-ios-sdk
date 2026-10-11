@@ -54,11 +54,13 @@ package final class TestPlatform: Sendable {
         self.logger = logger
         self.storageRoot = storageRoot ?? TestPlatform.temporaryDirectory()
         self.fileSystem = fileSystem
+        let developerErrors = self.developerErrors
         platform = Platform(
             clock: clock, elapsedClock: elapsedClock, random: random, scheduler: scheduler,
             networkMonitor: networkMonitor, transportFactory: { _, _ in transport },
             contextProvider: contextProvider, processFacts: processFacts, lifecycleSource: lifecycleSource,
-            logger: logger.asLogger, storageRoot: self.storageRoot, fileSystem: fileSystem)
+            logger: logger.asLogger, storageRoot: self.storageRoot, fileSystem: fileSystem,
+            developerError: { message in developerErrors.withLock { $0.append(message) } })
     }
 
     /// Developer errors reported through logs made by `log(level:logger:)`, in order, instead of

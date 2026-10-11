@@ -56,6 +56,7 @@ package final class TestHTTPServer: @unchecked Sendable {
 
     private struct State {
         var script: [Response] = []
+        var fixed: [String: Response] = [:]
         var requests: [RecordedRequest] = []
         var connections: [NWConnection] = []
     }
@@ -121,6 +122,12 @@ package final class TestHTTPServer: @unchecked Sendable {
 
     package func enqueue(_ responses: Response...) {
         state.withLock { $0.script.append(contentsOf: responses) }
+    }
+
+    /// Always answers `path` with `response`, outside the script: a backend whose `/v1/config` says
+    /// 404 while `/v1/batch` follows the script.
+    package func respond(to path: String, with response: Response) {
+        state.withLock { $0.fixed[path] = response }
     }
 
     /// The requests received so far, oldest first.
@@ -197,6 +204,7 @@ package final class TestHTTPServer: @unchecked Sendable {
     private func answer(_ connection: NWConnection, _ request: RecordedRequest) {
         let response: Response = state.withLock { s in
             s.requests.append(request)
+            if let fixed = s.fixed[request.path] { return fixed }
             return s.script.isEmpty ? Response() : s.script.removeFirst()
         }
         requestArrived.signal()

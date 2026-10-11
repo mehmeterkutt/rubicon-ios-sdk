@@ -110,6 +110,7 @@ package final class Writer: @unchecked Sendable {
     private let startedFlag = AtomicFlag()
     private let readyFlag = AtomicFlag()
     private let lockedFlag = AtomicFlag()
+    private let stoppedFlag = AtomicFlag()
 
     // Set up on the writer, at start or at the first unlock.
     private var snapshot: ConfigSnapshot
@@ -169,6 +170,19 @@ package final class Writer: @unchecked Sendable {
         uploadSignal.clear()
     }
 
+    /// Stops the writer for a test that starts another instance on the same files: the stores are
+    /// written, the interval timer and the listeners are cancelled, and later messages are ignored.
+    package func shutdown() {
+        stoppedFlag.set()
+        platform.scheduler.run(on: .writer) { [self] in
+            interval?.cancel()
+            interval = nil
+            lifecycleToken?.cancel()
+            networkToken?.cancel()
+            persistStores()
+        }
+    }
+
     /// Starts the writer: its startup work first, then the messages in order.
     package func start() {
         channel.withLock { $0.started = true }
@@ -214,6 +228,7 @@ package final class Writer: @unchecked Sendable {
 
     private func drain() {
         platform.scheduler.assertOn(.writer)
+        if stoppedFlag.isSet { return }
         guard
             channel.withLock({ c in
                 if c.draining { return false }

@@ -45,6 +45,7 @@ package final class Uploader: @unchecked Sendable {
     private let networkReturned = AtomicFlag()
     private let startedFlag = AtomicFlag()
     private let busy = AtomicFlag()
+    private let stoppedFlag = AtomicFlag()
     private let backgroundFlush = Locked<(@Sendable () -> Void)?>(nil)
 
     // Uploader queue only.
@@ -96,6 +97,18 @@ package final class Uploader: @unchecked Sendable {
         scheduler.run(on: .uploader) { [self] in drain() }
     }
 
+    /// Stops the uploader for a test that starts another instance on the same files: a running wait
+    /// and the network listener are cancelled and later wakes are ignored. A request in flight
+    /// finishes first (at most the resource timeout of HTTP 3).
+    package func shutdown() {
+        stoppedFlag.set()
+        scheduler.run(on: .uploader) { [self] in
+            wait?.cancel()
+            wait = nil
+            networkToken?.cancel()
+        }
+    }
+
     /// The platform's background task began around the background flush (iOS Queue 2): `onDone`
     /// runs on the uploader queue when the drain that follows ends, whatever ended it, or at once
     /// when the uploader cannot run. A later call replaces an earlier one.
@@ -118,6 +131,7 @@ package final class Uploader: @unchecked Sendable {
     @discardableResult
     private func startUpIfReady() -> Bool {
         scheduler.assertOn(.uploader)
+        if stoppedFlag.isSet { return false }
         if startedFlag.isSet { return true }
         guard writerReady() else { return false }
         policy.restore()
@@ -136,6 +150,7 @@ package final class Uploader: @unchecked Sendable {
     /// Sends batches until none is left, a gate closes, or a failure starts a wait.
     private func drain() {
         scheduler.assertOn(.uploader)
+        if stoppedFlag.isSet { return }
         guard pending.clear() else { return }
         guard startUpIfReady() else {
             // Not ready yet: the wake is kept for the writer's `onReady`.

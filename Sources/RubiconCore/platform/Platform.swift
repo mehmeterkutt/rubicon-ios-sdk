@@ -21,6 +21,9 @@ package struct Platform: Sendable {
     package var storageRoot: URL
     /// The file operations of the file-based stores, a seam for fault injection and the locked state.
     package var fileSystem: any FileSystem
+    /// What a developer mistake does when `debug` is on: `assertionFailure` in production, a
+    /// recording closure in tests (iOS Configuration 2).
+    package var developerError: @Sendable (String) -> Void
 
     package init(
         clock: any Clock,
@@ -34,7 +37,8 @@ package struct Platform: Sendable {
         lifecycleSource: any LifecycleSource,
         logger: @escaping RubiconLogger,
         storageRoot: URL,
-        fileSystem: any FileSystem
+        fileSystem: any FileSystem,
+        developerError: @escaping @Sendable (String) -> Void = { assertionFailure($0) }
     ) {
         self.clock = clock
         self.elapsedClock = elapsedClock
@@ -48,5 +52,6 @@ package struct Platform: Sendable {
         self.logger = logger
         self.storageRoot = storageRoot
         self.fileSystem = fileSystem
+        self.developerError = developerError
     }
 }

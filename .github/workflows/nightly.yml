@@ -20,7 +20,10 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      # The stress suite (plan section 5) runs here and on demand, not per pull request.
       - run: swift test --sanitize=thread
+        env:
+          RUBICON_STRESS: "1"
 
   release-configuration:
     name: core tests in the release configuration
