@@ -6,9 +6,13 @@ import PackageDescription
 let package = Package(
     name: "Rubicon",
     platforms: [
-        // iOS 15 is the floor (iOS Public API 2). Only iOS is declared (iOS Public API 8); the
-        // macOS build of RubiconCore and the UIKit-guarded Rubicon target exists for `swift test`.
-        .iOS(.v15)
+        // iOS 15 is the floor (iOS Public API 2). iOS is the only supported platform (iOS Public
+        // API 8); the macOS entry is not support, it pins the deployment target of the host build
+        // that `swift test` uses to the same OS generation as iOS 15, so that an API available on
+        // iOS 15 compiles there and the toolchain's default (10.13 on Xcode 26, 14 on Xcode 27)
+        // does not decide what the core may call (plan section 15, 2026-10-12).
+        .iOS(.v15),
+        .macOS(.v12),
     ],
     products: [
         // Swift apps add this product; it re-exports RubiconCore.
