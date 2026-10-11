@@ -30,3 +30,11 @@ extension Date {
         self.init(timeIntervalSince1970: Double(epochMillis) / 1000)
     }
 }
+
+extension RandomSource {
+    /// A uniform value in `[lower, upper)` from the next 53 random bits.
+    package func nextDouble(in range: Range<Double>) -> Double {
+        let unit = Double(nextUInt64() >> 11) / Double(1 << 53)
+        return range.lowerBound + unit * (range.upperBound - range.lowerBound)
+    }
+}

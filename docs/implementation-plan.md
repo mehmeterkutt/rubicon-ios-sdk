@@ -689,7 +689,7 @@ without a test blocks the release.
 | iOS HTTP 3 | `URLError` to `FailureKind`, `cancelled`, ATS as `tls`, blocked host, observer `error` values | 5.1, 7.6 | `TransportFailureTests` (the whole `URLError` table, `cancelled`, `dns`, `connect`, `io`, `unexpected`, blocked host through an injected resolver, localhost and IP literals skipped), `HostResolverTests` |
 | iOS HTTP 4 | User-Agent; TLS, pinning and proxies through the platform | 5.1, 8.5 | `TransportRequestTests` (`User-Agent: rubicon-ios/0.1.0 (iOS 17.5.1)`); ATS through the mapping only, the real refusal needs an app (8.1) |
 | iOS Retry 1 | `NWPathMonitor`, `.requiresConnection` connected, optimistic start | 7.2 | `FakeSignalsTests` (listener tokens, only changes heard); the real monitor in 7.2 |
-| iOS Retry 2 | `systemUptime` for waits; `cancelled` as waiting | 5.2 | |
+| iOS Retry 2 | `systemUptime` for waits; `cancelled` as waiting | 5.2 | `RetryBackoffTests` (waits on the elapsed clock while the wall clock moves back), `RetryDecisionTests` (`cancelled` five times leaves step, wait and attempts unchanged, `last_failure` is `cancelled`, the next trigger tries at once), `RetryPersistenceTests` (clock guard at restore) |
 | iOS Privacy 1 | The manifest; the label table; the required-reason grep | 1.1, 7.8, 8.5 | `PrivacyInfo.xcprivacy` declared as a resource; `check-required-reason-apis.sh` |
 | iOS Logging 1 | Closure logger, `os.Logger` sink, level mapping, `privacy: .public`, no `print` | 2.2, 7.1 | `LogTests` (closure logger, level gating, repeat limit, `repeatKey`, no-op default); the `os.Logger` sink in 7.1 |
 | iOS Logging 2 | `EventObserver` enum, `RBNEventUpdate`, `threadDictionary` guard, trap rule | 2.2, 3.2, 7.7 | `LogTests` (thread-dictionary re-entrancy guard, other threads unaffected, failure reports switch once); `EventUpdate` in 3.2, the wrapper in 7.7 |
@@ -711,7 +711,7 @@ without a test blocks the release.
 - [x] 4.1 Key-value stores
 - [x] 4.2 Event store
 - [x] 5.1 HTTP transport
-- [ ] 5.2 Retry policy and backoff
+- [x] 5.2 Retry policy and backoff
 - [ ] 5.3 Remote configuration
 - [ ] 6.1 Identity and super properties
 - [ ] 6.2 Session
@@ -795,6 +795,8 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-12 | 4.2 | Bodies in memory | `writeBatch` returns the body as `Data` (at most 512 KB plus the envelope) instead of streaming into an output stream, since the transport compresses it in memory in one pass (iOS HTTP 2); a segment is read as bytes and split at line breaks, never held as a `String`. `PosixFileSystem.delete` removes an empty directory with `rmdir`, and `list` of a plain file is empty, as `File.listFiles()` was. | - |
 | 2026-10-12 | 5.1 | What the transport tests cannot reach on macOS | A TLS handshake failure and an App Transport Security refusal need a TLS server with a bad certificate or an iOS app: `TestHTTPServer` speaks plain HTTP. The `URLError` to `FailureKind` table is tested as a pure function for every code, including the certificate codes and -1022; the live `tls` path is left to the consumer apps and the demo (8.1, 9.3). | Step 8.1 |
 | 2026-10-12 | 5.1 | Transport details | `Content-Length` is set on the request explicitly (URLSession sets it from the upload data as well); the completion wait is bounded by the resource timeout plus thirty seconds as a guard against a stuck stack; `cancelCurrent()` cancels the task in flight from any thread for the background expiration (iOS Queue 2); the delegate that refuses redirects is a separate object so the transport stays a plain `Sendable` class; `HostResolver` uses `getaddrinfo` and `getnameinfo` with `NI_NUMERICHOST`. | - |
+| 2026-10-12 | 5.2 | The one extra line of the retry `switch` | `RetryGroup.interrupted` for `FailureKind.cancelled` (iOS Retry 2): `onResult` clears any wait and records `last_failure = "cancelled"` with no step, no pause and no attempt counted; the next trigger tries at once. Everything else is the Android policy with the same table, jitter, poison-batch and clock-guard rules, over `RandomSource.nextDouble(in:)`. | - |
+| 2026-10-12 | 5.2 | Who logs `TLS_FAILED` on iOS | The transport (5.1), where the ATS case needs its own message; the policy logs the four upload codes only, so the code still fires once per process. On Android the policy logged it. | `docs/issue-codes.md` unchanged |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release
