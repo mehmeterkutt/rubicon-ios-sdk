@@ -684,10 +684,10 @@ without a test blocks the release.
 | iOS Serialization 1 | `JSONSerialization` with `.sortedKeys`; the number text warning; structural golden | 2.4, 8.4 | `JsonTests` (every value type, sorted compact output, `{"coupon":null}`, the pinned behaviours `50`, `\/`, `49.899999999999999`, `1e+21`, NaN refused; round trips; `JSONDecoder` as the independent parser; typed reads; fragments and trailing content rejected) |
 | iOS Serialization 2 | The Swift conversion table; the enum caveat | 2.5 | `PropertyNormalizerConversionTests` (one test per row: integer widths, `UInt64` over range, `Float` and `Decimal` text, `CGFloat`, `Character`, `Date`, `URL`, enums incl. the `CustomStringConvertible` and `@objc` caveats, sets and slices, non-string keys, bridged lone surrogate, unsupported types), `PropertyNormalizerLimitTests` (every limit at, below and above), `PropertyProblemReportingTests`, `PropertyNormalizerFuzzTests` |
 | iOS Serialization 3 | `ISO8601DateFormatter`, range rule, Android vectors | 2.3 | `IsoDatesTests` (the Android vectors incl. years 0000 and 9999, range rule, 100 000 instants against `Calendar` from 1583 on, day round trip over the range); see the 2026-10-11 log row on the Julian cutover |
-| iOS HTTP 1 | Ephemeral session, 20 s and 45 s, redirects refused, semaphore | 5.1 | |
-| iOS HTTP 2 | gzip through `zlib` | 5.1 | |
-| iOS HTTP 3 | `URLError` to `FailureKind`, `cancelled`, ATS as `tls`, blocked host, observer `error` values | 5.1, 7.6 | |
-| iOS HTTP 4 | User-Agent; TLS, pinning and proxies through the platform | 5.1, 8.5 | |
+| iOS HTTP 1 | Ephemeral session, 20 s and 45 s, redirects refused, semaphore | 5.1 | `TransportRequestTests` (ephemeral session, headers, `Content-Length`), `TransportResponseTests` (redirect delivered as the response, 304), `TransportFailureTests` (request and resource timeouts, `cancelCurrent`) |
+| iOS HTTP 2 | gzip through `zlib` | 5.1 | `TransportRequestTests` (gzip body decompressed and compared, header bytes `1f 8b`, uncompressed fallback with `COMPRESSION_FAILED`), `HostResolverTests` (gzip round trip) |
+| iOS HTTP 3 | `URLError` to `FailureKind`, `cancelled`, ATS as `tls`, blocked host, observer `error` values | 5.1, 7.6 | `TransportFailureTests` (the whole `URLError` table, `cancelled`, `dns`, `connect`, `io`, `unexpected`, blocked host through an injected resolver, localhost and IP literals skipped), `HostResolverTests` |
+| iOS HTTP 4 | User-Agent; TLS, pinning and proxies through the platform | 5.1, 8.5 | `TransportRequestTests` (`User-Agent: rubicon-ios/0.1.0 (iOS 17.5.1)`); ATS through the mapping only, the real refusal needs an app (8.1) |
 | iOS Retry 1 | `NWPathMonitor`, `.requiresConnection` connected, optimistic start | 7.2 | `FakeSignalsTests` (listener tokens, only changes heard); the real monitor in 7.2 |
 | iOS Retry 2 | `systemUptime` for waits; `cancelled` as waiting | 5.2 | |
 | iOS Privacy 1 | The manifest; the label table; the required-reason grep | 1.1, 7.8, 8.5 | `PrivacyInfo.xcprivacy` declared as a resource; `check-required-reason-apis.sh` |
@@ -710,7 +710,7 @@ without a test blocks the release.
 - [x] 3.3 The `Analytics` protocol
 - [x] 4.1 Key-value stores
 - [x] 4.2 Event store
-- [ ] 5.1 HTTP transport
+- [x] 5.1 HTTP transport
 - [ ] 5.2 Retry policy and backoff
 - [ ] 5.3 Remote configuration
 - [ ] 6.1 Identity and super properties
@@ -793,6 +793,8 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-12 | 4.2 | The event store needs no file metadata at all | The port keeps the Android rules (names carry the index, the writer counts what it wrote, a leftover `.tmp` is closed at startup after a byte scan), so neither a timestamp nor a size is ever read: the "one startup size read under `C617.1`" of iOS Disk 3 is unnecessary, and the `lseek` question of 2.1 is moot for the core. `C617.1` is then needed for install detection only (iOS Lifecycle 4). The iOS Disk page's decision 3 and the Privacy page's manifest rationale should say so; asked of the user in the step report. | iOS Disk 3 (page edit pending the user) |
 | 2026-10-12 | 4.2 | The locked device in the event store | `append` returns `.locked` on a permission error (nothing counted, nothing logged above DEBUG), `writeBatch` returns `.locked` (nothing read, deleted or counted), `closeOpenSegment` keeps the segment open, `open` returns `false` for the writer to call again, and `suspend()` syncs and closes the open segment's handle before the lock without closing the segment; the next `append` reopens the same `.tmp` with its counts intact. The uploader and writer act on these in 6.3b and 6.4. | iOS Disk 1 (as decided) |
 | 2026-10-12 | 4.2 | Bodies in memory | `writeBatch` returns the body as `Data` (at most 512 KB plus the envelope) instead of streaming into an output stream, since the transport compresses it in memory in one pass (iOS HTTP 2); a segment is read as bytes and split at line breaks, never held as a `String`. `PosixFileSystem.delete` removes an empty directory with `rmdir`, and `list` of a plain file is empty, as `File.listFiles()` was. | - |
+| 2026-10-12 | 5.1 | What the transport tests cannot reach on macOS | A TLS handshake failure and an App Transport Security refusal need a TLS server with a bad certificate or an iOS app: `TestHTTPServer` speaks plain HTTP. The `URLError` to `FailureKind` table is tested as a pure function for every code, including the certificate codes and -1022; the live `tls` path is left to the consumer apps and the demo (8.1, 9.3). | Step 8.1 |
+| 2026-10-12 | 5.1 | Transport details | `Content-Length` is set on the request explicitly (URLSession sets it from the upload data as well); the completion wait is bounded by the resource timeout plus thirty seconds as a guard against a stuck stack; `cancelCurrent()` cancels the task in flight from any thread for the background expiration (iOS Queue 2); the delegate that refuses redirects is a separate object so the transport stays a plain `Sendable` class; `HostResolver` uses `getaddrinfo` and `getnameinfo` with `NI_NUMERICHOST`. | - |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release
