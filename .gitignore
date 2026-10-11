@@ -1,0 +1,13 @@
+.DS_Store
+/.build/
+/.swiftpm/
+/*.xcodeproj/
+/ConsumerApps/*/*.xcodeproj/
+/ConsumerApps/*/DerivedData/
+xcuserdata/
+DerivedData/
+*.xcresult
+/coverage/
+/.index-build/
+Package.resolved
+.idea/
