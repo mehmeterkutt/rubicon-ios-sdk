@@ -25,7 +25,8 @@ package final class IdentityRef: Sendable {
 
     package var value: IdentitySnapshot? { stored.current }
 
-    fileprivate func fill(_ snapshot: IdentitySnapshot) {
+    /// Set by `Identity` when the stores are loaded, or by a test.
+    package func fill(_ snapshot: IdentitySnapshot) {
         stored.withLock { $0 = snapshot }
     }
 }
@@ -44,7 +45,8 @@ package final class IdentifyTicket: Sendable {
 
     package var decision: Decision? { stored.current }
 
-    fileprivate func decide(_ decision: Decision) {
+    /// Set by `Identity` when the stores are loaded, or by a test.
+    package func decide(_ decision: Decision) {
         stored.withLock { $0 = decision }
     }
 }

@@ -29,10 +29,10 @@ public types at the top level of the target.
   and the session id (iOS Event Model 3).
 - Time in memory is `Date` from the injected clock at call time; on the wire `timestamp`, `sent_at`
   and `context.session.started_at` are epoch milliseconds, rounded, converted once in the
-  serializer. `Date` in properties becomes `yyyy-MM-dd'T'HH:mm:ss.SSS'Z'` through one shared
-  `ISO8601DateFormatter` with fractional seconds; years outside 0000 to 9999 are rejected before
-  it; the Android `IsoDates` vectors run against it. `sent_at` is rewritten on every attempt (iOS
-  Event Model 2, iOS Serialization 3).
+  serializer. `Date` in properties becomes `yyyy-MM-dd'T'HH:mm:ss.SSS'Z'` through `IsoDates`, the
+  port of the Android calendar arithmetic (Foundation's formatter is Julian before 1582); years
+  outside 0000 to 9999 are rejected before it; the Android vectors run against it. `sent_at` is
+  rewritten on every attempt (iOS Event Model 2, iOS Serialization 3, version 2).
 
 ## Configuration
 
