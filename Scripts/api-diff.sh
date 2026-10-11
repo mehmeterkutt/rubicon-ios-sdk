@@ -23,11 +23,16 @@ for m in $modules; do
     python3 - "$dir/$m.symbols.json" > "$tmp/$m.txt" <<'PY'
 import json, sys
 g = json.load(open(sys.argv[1]))
+module = g["module"]["name"]
 lines = []
 for s in g.get("symbols", []):
     if s.get("spi"):
         continue
     if s.get("accessLevel") not in ("public", "open"):
+        continue
+    # Re-exported and synthesized symbols carry another module's or no location: not this record.
+    uri = s.get("location", {}).get("uri", "")
+    if f"/Sources/{module}/" not in uri:
         continue
     decl = "".join(f["spelling"] for f in s.get("declarationFragments", []))
     path = ".".join(s["pathComponents"])

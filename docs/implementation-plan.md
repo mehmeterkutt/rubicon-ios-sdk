@@ -39,10 +39,11 @@ on. "Android log 5.1" means the rows of step 5.1 in section 15 of the Android pl
 
 1. At the start of a session read `CLAUDE.md`, then section 14 (Status) of this file, and take the
    first unchecked step. Do not work on two steps at once.
-2. One phase (a numbered section 7 to 12) is one branch (`feature/<topic>`, from `develop`, no
-   number) and one pull request; every step inside it is one commit, made only after the user has
-   reviewed the step's changes (decided 2026-10-11, section 15). A step that turns out too big is
-   split, and the split is written into this file first.
+2. Phases 2 to 5 (steps 2.1 to 5.3) are one branch, `feature/core-foundations`, and one pull
+   request; every step is one commit, made without a review stop, and questions are still asked
+   when a decision is missing (decided 2026-10-11, section 15). Phase 6 onwards: one phase is one
+   branch and one pull request, one commit per step, reviewed by the user before each commit. A
+   step that turns out too big is split, and the split is written into this file first.
 3. Before writing code for a step, read the decisions listed under "Read" in full, iOS page first,
    then the Android page it inherits from, then the Android code named under "Port". Read the
    reference SDK code named there when the step says so.
@@ -55,9 +56,9 @@ on. "Android log 5.1" means the rows of step 5.1 in section 15 of the Android pl
    `CLAUDE.md` rule need the change; update them after approval. A change to the contract itself is
    a change to the Android page and the backend as well, and is taken only with the user.
 6. Done means every item of section 6 (Definition of done) holds. Then tick the step in section 14,
-   fill its rows in the traceability table (section 13) and stop for review with the changes
-   uncommitted. Commit, push and open the pull request only after the user approves. Never merge,
-   and never push to `develop` or `master`.
+   fill its rows in the traceability table (section 13) and commit (on the core-foundations branch)
+   or stop for review with the changes uncommitted (every later branch). Push and open the pull
+   request only after the user approves. Never merge, and never push to `develop` or `master`.
 7. Documents and code comments are in English, without emoji.
 
 ## 3. Open decisions to settle before step 1.1
@@ -669,15 +670,15 @@ without a test blocks the release.
 | iOS Context 1 | Field sources; no `api_level`, no `carrier`; the locale rule; sixteen fields | 7.3 | |
 | iOS Context 2 | `screen` static; network type from the shared monitor | 7.2, 7.3 | |
 | iOS Session 1 | `willEnterForeground`, `didEnterBackground`, startup `applicationState` | 7.4, 6.2 | |
-| iOS Session 2 | `systemUptime` under `35F9.1` | 7.1, 2.1, 7.8 | |
+| iOS Session 2 | `systemUptime` under `35F9.1` | 7.1, 2.1, 7.8 | `FakeClocksTests` (elapsed clock only moves forward); the real clock in 7.1 |
 | iOS Lifecycle 1 | One swizzle, `viewDidAppear`, behind `screenViews` | 7.5 | |
 | iOS Lifecycle 2 | `ScreenNamed`, class names, `UIHostingController` skipped, re-send on foreground | 7.5 | |
 | iOS Lifecycle 3 | Two `trackDeepLink` methods, the gate | 3.3, 7.5 | |
 | iOS Lifecycle 4 | Install and update from file dates under `C617.1`; fallback; Apple verification | 7.4, 7.8 | |
 | iOS Lifecycle 5 | `RubiconNetworkObserver` | 7.6 | |
-| iOS Queue 1 | Two serial queues, bounded channel, atomic flag, `Scheduler` | 2.1, 6.3b, 6.4 | |
+| iOS Queue 1 | Two serial queues, bounded channel, atomic flag, `Scheduler` | 2.1, 6.3b, 6.4 | `TestSchedulerTests` (due order, never early, cancellation, re-entrant work), `GCDSchedulerTests` (serial per worker, `assertOn`) |
 | iOS Queue 2 | Background task, expiration cancels, `willTerminate`, `.appex` no-op | 6.3b, 6.4, 7.1, 7.4, 8.3 | |
-| iOS Disk 1 | Host protection class inherited; the locked state | 4.1, 4.2, 6.3b, 7.1 | |
+| iOS Disk 1 | Host protection class inherited; the locked state | 4.1, 4.2, 6.3b, 7.1 | `FakeFileSystemTests` (`locked` is `permissionDenied` for every operation but `exists`), `PosixFileSystemTests` (`notFound` apart from I/O errors); the store states in 4.1 |
 | iOS Disk 2 | `F_FULLFSYNC` with `fsync` fallback | 4.1 | |
 | iOS Disk 3 | No timestamps, sizes in memory, one startup size read, no disk space API | 4.2, 7.8 | |
 | iOS Serialization 1 | `JSONSerialization` with `.sortedKeys`; the number text warning; structural golden | 2.4, 8.4 | |
@@ -687,7 +688,7 @@ without a test blocks the release.
 | iOS HTTP 2 | gzip through `zlib` | 5.1 | |
 | iOS HTTP 3 | `URLError` to `FailureKind`, `cancelled`, ATS as `tls`, blocked host, observer `error` values | 5.1, 7.6 | |
 | iOS HTTP 4 | User-Agent; TLS, pinning and proxies through the platform | 5.1, 8.5 | |
-| iOS Retry 1 | `NWPathMonitor`, `.requiresConnection` connected, optimistic start | 7.2 | |
+| iOS Retry 1 | `NWPathMonitor`, `.requiresConnection` connected, optimistic start | 7.2 | `FakeSignalsTests` (listener tokens, only changes heard); the real monitor in 7.2 |
 | iOS Retry 2 | `systemUptime` for waits; `cancelled` as waiting | 5.2 | |
 | iOS Privacy 1 | The manifest; the label table; the required-reason grep | 1.1, 7.8, 8.5 | `PrivacyInfo.xcprivacy` declared as a resource; `check-required-reason-apis.sh` |
 | iOS Logging 1 | Closure logger, `os.Logger` sink, level mapping, `privacy: .public`, no `print` | 2.2, 7.1 | |
@@ -699,7 +700,7 @@ without a test blocks the release.
 - [x] 0 Open decisions D1 to D16 answered and recorded in section 15
 - [x] 1.1 Scaffold
 - [x] 1.2 CLAUDE.md files
-- [ ] 2.1 Platform protocols and test fixtures
+- [x] 2.1 Platform protocols and test fixtures
 - [ ] 2.2 Logging infrastructure
 - [ ] 2.3 Identifiers and time
 - [ ] 2.4 JSON layer
@@ -762,6 +763,12 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-11 | 1.2 | Android rules not carried over | Rules that exist only because of the JVM or Android were dropped rather than translated: the freezing property delegate and its diagnostic (a struct snapshot cannot be written to, iOS Configuration 1); `@Volatile`, `synchronized(this)` and deep copies at boundaries (value types and `Sendable`); `java.time`, `compileOnly`, `animalsniffer`, OkHttp version rules, `consumer-rules.pro`, Robolectric conventions, the `ACCESS_NETWORK_STATE` fallback, the main-process check (replaced by the app-extension check), `@JvmOverloads` and `@JvmStatic` (replaced by the Objective-C wrapper's rules). Every other seed rule has a counterpart in one of the four files. | - |
 | 2026-10-11 | 1.2 | Line counts | Root 198 lines, `Rubicon` 154, `RubiconObjC` 44, `RubiconCore` 233: the core file is above the 200-line rule because iOS adds the locked-device state, the `URLSession` and `zlib` settings and the `cancelled` kind to the Android content. The user accepted it: the limit for that file is 250 lines, the others keep 200. | Root `CLAUDE.md` (Keeping these files honest) |
 | 2026-10-11 | 1.2 | First CI run (PR #1) | `check` 1 min 25 s, `simulator and consumer apps` 4 min 44 s on `macos-26` with Xcode 26.6; both lanes about 6 macOS minutes, about 60 plan minutes, for a pull request that touches the iOS side. The simulator suite, XcodeGen from Homebrew and the three consumer apps passed on the first run. `check-docs.sh --build` failed: `swift package dump-symbol-graph` on SwiftPM's native build system walks the test host module too and fails when it is not built; the scripts now run `swift build --build-tests` first and read the output directory from the command's own message (it is `.build/out/symbolgraph` under Xcode 27's build system and `.build/arm64-apple-macosx/symbolgraph` under 26.6). The three `CLAUDE.md` files in source targets are excluded in `Package.swift` so SwiftPM stops warning about unhandled files. | D6 (budget input), Scripts |
+| 2026-10-11 | 2.1 | Steps 2.1 to 5.3 in one pull request | The user asked for phases 2 to 5 on one branch (`feature/core-foundations`) and one pull request, one commit per step, committed without a review stop; questions are still asked when a decision is missing. The per-commit review returns from phase 6 on. | Working agreement 2 and 6, root `CLAUDE.md` |
+| 2026-10-11 | 2.1 | `RubiconTesting` visibility | The target is never a product, so its types are `package`, not `public`: a `public` type cannot expose `package` parameters, and nothing outside the package may see the fakes. | - |
+| 2026-10-11 | 2.1 | `ProcessFacts`, `LifecycleEvent`, listener tokens | The Android `ProcessInfo` is `ProcessFacts` (Foundation owns the name) with `osVersion`, `isAppExtension` (the iOS counterpart of `isMainProcess`) and `installedApp()` returning the two file dates of iOS Lifecycle 4. `LifecycleSource` reports a `LifecycleEvent` enum (`foreground`, `background`, `willTerminate`, `protectedDataWillBecomeUnavailable`, `protectedDataDidBecomeAvailable`) and `isProtectedDataAvailable`, so iOS Disk 1 and iOS Queue 2 need no second source. Listeners are `@Sendable` closures and `addListener` returns a token whose `cancel()` removes them; there is no `removeListener`. `NetworkMonitor.start()` takes no log: starting cannot fail on iOS. `TransportSettings` gains the instance's log in 2.2. | - |
+| 2026-10-11 | 2.1 | File sizes without `stat` | The core's `PosixFileSystem.fileSize` opens the file and uses `lseek(SEEK_END)`, which is not on Apple's required-reason list, so the core calls no listed API and the source-rules grep passes. Question for the user (asked in the step report): keep the `Rubicon` platform's startup size read on `attributesOfItem` under `C617.1` as iOS Disk 3 says, or use the same `lseek` path everywhere and leave `C617.1` to install detection alone (recommended). | iOS Disk 3 (if the user agrees) |
+| 2026-10-11 | 2.1 | `TestHTTPServer` | `NWListener` bound to `127.0.0.1` through `requiredLocalEndpoint`; the connection handler must be set before `start`, or the listener fails with `EINVAL`; every response carries `Connection: close` and the connection is closed after it. `URLSession` retries a GET whose connection dropped, so tests of the `io` kind use a POST. | - |
+| 2026-10-11 | 2.1 | Symbol graphs and re-exports | `Rubicon` re-exports the core, so its symbol graph repeats the core's public symbols, and synthesized members (`init(rawValue:)`) carry no source location. `api-diff.sh` and `check-docs.sh` keep only symbols whose location is under `Sources/<module>/`, so each record lists what its module declares and the docs check asks only for comments the author can write. `swift-format`'s one-line-summary rule is off: multi-sentence doc comments are the house style. | Scripts, `.swift-format` |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release
