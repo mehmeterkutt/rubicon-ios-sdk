@@ -1,0 +1,47 @@
+name: Simulator
+
+# The simulator lane (D6): the Rubicon and Objective-C test targets on the newest simulator, the
+# three consumer apps, the DocC build. Runs only when the iOS side or the package shape changes.
+on:
+  pull_request:
+    paths:
+      - Package.swift
+      - Sources/Rubicon/**
+      - Sources/RubiconObjC/**
+      - Tests/RubiconTests/**
+      - Tests/RubiconObjCTests/**
+      - ConsumerApps/**
+      - Scripts/**
+      - .github/workflows/simulator.yml
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: simulator-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+
+jobs:
+  simulator:
+    name: simulator and consumer apps
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcrun simctl list runtimes
+      - run: Scripts/test-simulator.sh
+      - run: Scripts/build-consumer-apps.sh
+      - run: Scripts/check-docs.sh --build
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-results
+          path: |
+            .build/xcode/Logs/Test/*.xcresult
+          retention-days: 7

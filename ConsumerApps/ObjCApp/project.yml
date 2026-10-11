@@ -1,0 +1,27 @@
+# XcodeGen spec (D10); the .xcodeproj is generated, never committed.
+name: ObjCApp
+options:
+  bundleIdPrefix: com.rubicon.analytics.consumer
+  deploymentTarget:
+    iOS: "15.0"
+  xcodeVersion: "16.0"
+packages:
+  Rubicon:
+    path: ../..
+targets:
+  ObjCApp:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    dependencies:
+      - package: Rubicon
+        product: RubiconObjC
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rubicon.analytics.consumer.objcapp
+        CLANG_ENABLE_MODULES: YES
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: NO
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO

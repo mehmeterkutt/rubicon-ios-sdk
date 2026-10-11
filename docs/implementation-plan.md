@@ -39,8 +39,10 @@ on. "Android log 5.1" means the rows of step 5.1 in section 15 of the Android pl
 
 1. At the start of a session read `CLAUDE.md`, then section 14 (Status) of this file, and take the
    first unchecked step. Do not work on two steps at once.
-2. One step is one branch (`feature/<topic>`, from `develop`, no step number) and one pull request. A
-   step that turns out too big is split, and the split is written into this file first.
+2. One phase (a numbered section 7 to 12) is one branch (`feature/<topic>`, from `develop`, no
+   number) and one pull request; every step inside it is one commit, made only after the user has
+   reviewed the step's changes (decided 2026-10-11, section 15). A step that turns out too big is
+   split, and the split is written into this file first.
 3. Before writing code for a step, read the decisions listed under "Read" in full, iOS page first,
    then the Android page it inherits from, then the Android code named under "Port". Read the
    reference SDK code named there when the step says so.
@@ -114,11 +116,14 @@ rubicon-ios-sdk/
     RubiconObjCTests/           Objective-C (.m), XCTest, on the simulator (D16)
   ConsumerApps/
     Swift5App/, Swift6App/, ObjCApp/   project.yml each (D10); UI tests for the simulator suite (step 8.1)
+  API/                        the public API record, one text file per module (step 1.1, D-log 2026-10-11)
   Scripts/
-    check.sh                    everything CI runs, in order
-    check-source-rules.sh       the static rules of section 5
+    check.sh                    everything CI runs, in order; --all adds the simulator lane
+    check-source-rules.sh       the static rules of section 5, with --self-test
     check-required-reason-apis.sh   the privacy manifest grep (iOS Privacy 1)
-    check-coverage.sh, check-docs.sh, api-diff.sh, refresh-golden.sh, release.sh
+    check-coverage.sh, check-docs.sh, api-diff.sh, refresh-golden.sh, format.sh,
+    test-simulator.sh, build-consumer-apps.sh, release.sh (step 8.6)
+    lib/strip-swift.pl          blanks comments and strings before the source scans
   docs/
     implementation-plan.md      this file
     issue-codes.md              the catalogue, copied from Android with a Platform column (step 2.2)
@@ -133,9 +138,10 @@ Internal areas in `RubiconCore`, one folder each, the same names as the Android 
 (UUIDv7, ISO time, HTTP date, SHA-256), `json`, `validation`, `config`, `event`, `storage`, `queue`
 (writer, uploader, triggers), `http`, `retry`, `identity`, `session`, `context`, `privacy`, `remote`,
 `diagnostics`, `pipeline`. Public types live at the top level of the target; everything else is
-`internal`. Types the `Rubicon` target needs from the core are `public` with the `@_spi(RubiconInternal)`
-attribute, the counterpart of `@RubiconInternal`: invisible to apps that import without the SPI, left
-out of the API baseline.
+`internal`. Types the `Rubicon`, `RubiconTesting` and test targets need from the core are `package`
+(the access level between `internal` and `public`, Swift 5.9), the counterpart of `@RubiconInternal`:
+visible inside this package only, never to apps, and therefore absent from the API record by
+construction (decided 2026-10-11, section 15). `@_spi` is not used.
 
 ## 5. Test strategy
 
@@ -153,7 +159,7 @@ Every layer below is required; the step or phase that introduces it is in bracke
 | Concurrency | `Tests/RubiconCoreTests/Stress` and `swift test --sanitize=thread` | Real queues, many threads, bounded runs; Thread Sanitizer on the core tests in CI | Thread safety of every public method, per-thread ordering, no lost or duplicated events under load, backpressure counting; TSan clean [6] |
 | Robustness | unit and integration | Seeded random inputs (no new library), fault-injecting file system and transport | Validator and serializer never trap on arbitrary input; storage failures, full disk, truncated files, unreadable and locked stores degrade as decided [2, 4, 6] |
 | Static rules | `Scripts/check-source-rules.sh` | Plain source scan | No `print` or `debugPrint`; no `UserDefaults`; no `URLSession.shared`; no `#available`; no `Date()` in the core outside `Clock`; no `DispatchQueue.main` in the core; no `import UIKit` outside `Sources/Rubicon` and no unguarded one there; no `Task {` or `async` in public API; no `@unchecked Sendable` without a justifying comment on the line above; log calls never interpolate `properties`, `traits`, `userId`, `deviceId`, `apiKey`, `headers` or `body` (Logging 4a); the required-reason API symbols (`systemUptime`, `mach_absolute_time`, `creationDate`, `contentModificationDate`, `attributesOfItem`, `stat`, `fstat`, `volumeAvailableCapacity`, `UserDefaults`, `activeInputModes`) appear only in `Sources/Rubicon/Platform` and only for the two declared categories (iOS Privacy 1) [1, extended as areas arrive] |
-| API | `Scripts/api-diff.sh` | `swift package diagnose-api-breaking-changes` against the last release tag; the SPI left out | Every public change is visible in the diff and named in the pull request; nothing is public by accident [1] |
+| API | `Scripts/api-diff.sh` | `swift package diagnose-api-breaking-changes` against the last release tag; `package` symbols are not public and never appear | Every public change is visible in the diff and named in the pull request; nothing is public by accident [1] |
 | Documentation | `Scripts/check-docs.sh` | `xcodebuild docbuild`, symbol graph | Every public symbol has a documentation comment (D13) [1] |
 | Coverage | `Scripts/check-coverage.sh` | `llvm-cov` | Gate at the thresholds of D9 [1] |
 | Manual | demo app with `fake-server` | Checklist in step 9.3 | What a person must see once before a release [9] |
@@ -468,8 +474,8 @@ Rules that apply to every test:
 - Read: iOS Public API 4; Public API 1, 2; Android log 6.7 and 7.1.
 - Build: `DefaultAnalytics` (`final class`, `@unchecked Sendable` with the justification), the core
   factory taking `Platform` and the configuration, the second-instance rule (`assertionFailure` in
-  debug, existing instance and ERROR in release), `flushBlocking(timeout:)` and `shutdown()` behind
-  the SPI for tests.
+  debug, existing instance and ERROR in release), `flushBlocking(timeout:)` and `shutdown()` as
+  `package` members for tests.
 - Tests: `CoreIntegrationTest` over real files and `TestHTTPServer`: track to server, restart, crash
   leftovers, a second instance; the stress suite (section 5) and the first TSan run.
 
@@ -645,14 +651,14 @@ without a test blocks the release.
 
 | Decision | In short | Steps | Tests |
 |---|---|---|---|
-| iOS Public API 1 | Swift-first API, `RubiconObjC` wrapper in the first release | 1.1, 7.7 | |
-| iOS Public API 2 | iOS 15, tools 6.0, no `#available` | 1.1 | |
-| iOS Public API 3 | Swift 6 mode, `Sendable` public types, `@Sendable` hooks, no `async`; Swift 5 and 6 clients | 1.1, 3.2, 8.2 | |
+| iOS Public API 1 | Swift-first API, `RubiconObjC` wrapper in the first release | 1.1, 7.7 | `RubiconObjCTests` (Objective-C, XCTest) runs on the simulator; `ObjCApp` compiles `@import RubiconObjC` |
+| iOS Public API 2 | iOS 15, tools 6.0, no `#available` | 1.1 | `check.sh` builds every target for `arm64-apple-ios15.0-simulator`; source rule `no-available` with its self-test |
+| iOS Public API 3 | Swift 6 mode, `Sendable` public types, `@Sendable` hooks, no `async`; Swift 5 and 6 clients | 1.1, 3.2, 8.2 | `swiftLanguageModes: [.v6]`; `Swift5App` and `Swift6App` (strict concurrency, warnings as errors) build; source rules `no-async-public-api`, `no-task-public-api`, `unjustified-unchecked-sendable` |
 | iOS Public API 4 | `RubiconAnalytics.make(configuration:) -> any Analytics` | 7.1 | |
 | iOS Public API 5 | `[String: Any]` to `PropertyValue`, `CFBooleanGetTypeID` | 2.5 | |
 | iOS Public API 6 | `BeforeSend` closure, value-type `Event`, no `throws`; wrapper catches `NSException` | 3.2, 6.3a, 7.7 | |
 | iOS Public API 7 | Labels, properties, `Analytics`, `RubiconAnalytics`, `Rubicon`, `RBN` | 3.3, 7.7 | |
-| iOS Public API 8 | Three targets, iOS only, SwiftPM, zero dependencies, API diff | 1.1 | |
+| iOS Public API 8 | Three targets, iOS only, SwiftPM, zero dependencies, API diff | 1.1 | `Package.swift` has no dependencies; `api-diff.sh` records the public symbols per module in `API/` and runs `diagnose-api-breaking-changes` once a tag exists; source rule `no-uikit-outside-rubicon` |
 | iOS Event Model 1 | Protocol with three structs | 3.2 | |
 | iOS Event Model 2 | `Date` in memory, epoch ms on the wire | 3.2, 2.4 | |
 | iOS Event Model 3 | Lowercase UUIDv7 port | 2.3 | |
@@ -683,16 +689,16 @@ without a test blocks the release.
 | iOS HTTP 4 | User-Agent; TLS, pinning and proxies through the platform | 5.1, 8.5 | |
 | iOS Retry 1 | `NWPathMonitor`, `.requiresConnection` connected, optimistic start | 7.2 | |
 | iOS Retry 2 | `systemUptime` for waits; `cancelled` as waiting | 5.2 | |
-| iOS Privacy 1 | The manifest; the label table; the required-reason grep | 1.1, 7.8, 8.5 | |
+| iOS Privacy 1 | The manifest; the label table; the required-reason grep | 1.1, 7.8, 8.5 | `PrivacyInfo.xcprivacy` declared as a resource; `check-required-reason-apis.sh` |
 | iOS Logging 1 | Closure logger, `os.Logger` sink, level mapping, `privacy: .public`, no `print` | 2.2, 7.1 | |
 | iOS Logging 2 | `EventObserver` enum, `RBNEventUpdate`, `threadDictionary` guard, trap rule | 2.2, 3.2, 7.7 | |
 | Android decisions, all pages | Inherited unchanged | the ported tests of every step | |
 
 ## 14. Status
 
-- [ ] 0 Open decisions D1 to D16 answered and recorded in section 15
-- [ ] 1.1 Scaffold
-- [ ] 1.2 CLAUDE.md files
+- [x] 0 Open decisions D1 to D16 answered and recorded in section 15
+- [x] 1.1 Scaffold
+- [x] 1.2 CLAUDE.md files
 - [ ] 2.1 Platform protocols and test fixtures
 - [ ] 2.2 Logging infrastructure
 - [ ] 2.3 Identifiers and time
@@ -744,6 +750,19 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-11 | 0 | D1-D16 | All sixteen recommendations in section 3 approved as written by the user (repository `rubicon-team/rubicon-ios-sdk`, `master`/`develop`/`feature/*` with squash merge; package `Rubicon` with products `Rubicon` and `RubiconObjC`, bundle id prefix `com.rubicon.analytics`; placeholder host; Apache-2.0; SemVer 0.1.0 with a hand-maintained `Version.swift` checked against the tag; CI lanes and path filters; Swift Testing; `swift format`; llvm-cov 90/80; XcodeGen consumer apps; simulator matrix; demo repository `rubicon-team/rubicon-ios-demo`; `xcodebuild docbuild`; full ObjC wrapper; `NWListener` test server; SwiftPM ObjC test target). | section 3 (closed) |
 | 2026-10-11 | 0 | Which Xcode the SDK is built and tested with | Apple's Xcode support table (developer.apple.com/support/xcode, fetched 2026-10-11): Xcode 27 (macOS Tahoe 26.6 or later) accepts deployment targets and simulators of iOS 17 or later only; Xcode 26.6 (macOS Tahoe 26.2 or later) and Xcode 26.3 (the last that runs on macOS Sequoia 15.6) keep iOS 15. The floor is iOS 15 (iOS Public API 2), so the SDK is built and released with Xcode 26.x until the floor changes; `swift-tools-version` stays 6.0. D6 and D11 read "Xcode 26.6" where they say "Xcode 26"; the GitHub runner image is `macos-26`, whose default Xcode has been 26.6 since 2026-07-21 (actions/runner-images issue 14344). Raising the floor to iOS 17 and moving to Xcode 27 is a Confluence change (iOS Public API 2), not a plan change. | D6, D11 |
 | 2026-10-11 | 0 | Local toolchain versus release toolchain | The user's Mac runs macOS 27.0.1, on which Xcode 26.x does not launch, so local development uses Xcode 27 (Swift 6.4, iOS 17 or later simulators only). The release toolchain stays Xcode 26.6 on the `macos-26` runner: it is the only one that can build for the iOS 15 floor and boot an iOS 15 or 16 simulator, so CI is the gate for both and release artifacts are never built locally. `swift-tools-version` 6.0 and Swift 6 language mode keep the sources inside what both compilers accept; a local build that passes and a CI build that fails is handled in CI, not by raising the local toolchain's status. Whether the floor moves to iOS 17 (which would make Xcode 27 the release toolchain) is a Confluence question for iOS Public API 2, raised with the business separately. | D6, D11, CLAUDE.md commands (1.1) |
+| 2026-10-11 | 1.1 | Branch and commit granularity | One branch and pull request per phase, one commit per step, each commit made after the user reviewed the step; the user asked for this to keep the number of pull requests close to the Android repository's phases rather than its steps. | Working agreement 2, root `CLAUDE.md` |
+| 2026-10-11 | 1.1 | D16 confirmed | SwiftPM accepts an Objective-C test target (`Tests/RubiconObjCTests`, `.m` files, XCTest) in the iOS-only package; `xcodebuild test -scheme Rubicon-Package` on the iOS 27 simulator ran it and the Swift Testing target. The Objective-C tests stay in the package. | - |
+| 2026-10-11 | 1.1 | Code style | `swift format` with 4-space indentation and 120 columns (the Xcode defaults and what the five reference SDKs use), documentation and trap rules (`AllPublicDeclarationsHaveDocumentation`, `NeverForceUnwrap`, `NeverUseForceTry`, `NeverUseImplicitlyUnwrappedOptionals`) on in `Sources/` and off under `Tests/` and `ConsumerApps/` through their own `.swift-format`. | - |
+| 2026-10-11 | 1.1 | What the API check records | `diagnose-api-breaking-changes` reports breakages only, and only against a tag. To make every public change visible and nothing public by accident, `api-diff.sh` also writes the public symbols of each module (from `swift package dump-symbol-graph`, SPI symbols left out) to `API/<module>.txt` and fails when the committed record differs; `--update` is the counterpart of `apiDump`. Breakages against the last tag are allowed only through `Scripts/api-breakage-allowlist.txt`. | Plan section 5 (API row) |
+| 2026-10-11 | 1.1 | Where the documentation check runs | The undocumented-symbol check reads the symbol graph from `swift package dump-symbol-graph` and runs in every lane; `xcodebuild docbuild` runs in the simulator lane (`check-docs.sh --build`), because it needs an iOS destination and costs macOS minutes. D13 is implemented in two places, not one. | D13 |
+| 2026-10-11 | 1.1 | Runner image facts | `macos-26` (macOS 26.6.1) ships Xcode 26.0.1 to 26.6 with 26.6 the default, simulator runtimes iOS 26.2, 26.4 and 26.5, and no XcodeGen (installed with Homebrew in the simulator lane). The nightly "oldest" lane installs iOS 15.5 with `xcodebuild -downloadPlatform iOS -buildVersion 15.5`; unverified until the first nightly run, which decides D11's oldest runtime. | D6, D11 |
+| 2026-10-11 | 1.1 | Source rules in a shell script | The rules of section 5 that can be checked on an empty package are in `check-source-rules.sh` (ten regex rules plus the guarded-UIKit and justified-`@unchecked Sendable` checks); comments and strings are blanked by `lib/strip-swift.pl` with interpolations kept, as Android's `SourceScanner` kept template expressions. `--self-test` plants one violation per rule and is run by `check.sh`. The log-value rule looks inside `log.<level>(...)` and `logger.<level>(...)` calls; step 2.2 renames it to the real logger. | Plan section 5 |
+| 2026-10-11 | 1.1 | License holder | `LICENSE` is the verbatim Apache-2.0 text from apache.org without a copyright line; the legal entity to name in `NOTICE` and in the file headers, if any, is for the user to supply. | D4 |
+| 2026-10-11 | 1.1 | Cross-target visibility inside the package | `package` access level instead of `@_spi(RubiconInternal)`: what the `Rubicon`, `RubiconTesting` and test targets need from the core is `package`, which no app can see and which is not `public`, so it cannot leak into the API record or the breaking-change diagnosis; `@_spi` is an underscored attribute and leaves the symbol public. Chosen by the user over the plan's original SPI wording. | Plan section 4, section 5 (API row), step 6.6 |
+| 2026-10-11 | 1.2 | Android rules not carried over | Rules that exist only because of the JVM or Android were dropped rather than translated: the freezing property delegate and its diagnostic (a struct snapshot cannot be written to, iOS Configuration 1); `@Volatile`, `synchronized(this)` and deep copies at boundaries (value types and `Sendable`); `java.time`, `compileOnly`, `animalsniffer`, OkHttp version rules, `consumer-rules.pro`, Robolectric conventions, the `ACCESS_NETWORK_STATE` fallback, the main-process check (replaced by the app-extension check), `@JvmOverloads` and `@JvmStatic` (replaced by the Objective-C wrapper's rules). Every other seed rule has a counterpart in one of the four files. | - |
+| 2026-10-11 | 1.2 | Line counts | Root 198 lines, `Rubicon` 154, `RubiconObjC` 44, `RubiconCore` 233: the core file is above the 200-line rule because iOS adds the locked-device state, the `URLSession` and `zlib` settings and the `cancelled` kind to the Android content. The user accepted it: the limit for that file is 250 lines, the others keep 200. | Root `CLAUDE.md` (Keeping these files honest) |
+| 2026-10-11 | 1.2 | First CI run (PR #1) | `check` 1 min 25 s, `simulator and consumer apps` 4 min 44 s on `macos-26` with Xcode 26.6; both lanes about 6 macOS minutes, about 60 plan minutes, for a pull request that touches the iOS side. The simulator suite, XcodeGen from Homebrew and the three consumer apps passed on the first run. `check-docs.sh --build` failed: `swift package dump-symbol-graph` on SwiftPM's native build system walks the test host module too and fails when it is not built; the scripts now run `swift build --build-tests` first and read the output directory from the command's own message (it is `.build/out/symbolgraph` under Xcode 27's build system and `.build/arm64-apple-macosx/symbolgraph` under 26.6). The three `CLAUDE.md` files in source targets are excluded in `Package.swift` so SwiftPM stops warning about unhandled files. | D6 (budget input), Scripts |
+| 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release
 
