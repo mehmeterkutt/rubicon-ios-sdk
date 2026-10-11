@@ -22,6 +22,15 @@ jobs:
       - uses: actions/checkout@v4
       - run: swift test --sanitize=thread
 
+  release-configuration:
+    name: core tests in the release configuration
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      # The optimizer on and `defaultDebug` false: the other half of iOS Configuration 2.
+      - run: swift test -c release -Xswiftc -enable-testing
+
   simulator-matrix:
     name: simulator ${{ matrix.runtime }}
     runs-on: macos-26

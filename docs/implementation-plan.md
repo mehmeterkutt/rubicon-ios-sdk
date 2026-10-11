@@ -663,9 +663,9 @@ without a test blocks the release.
 | iOS Event Model 1 | Protocol with three structs | 3.2 | |
 | iOS Event Model 2 | `Date` in memory, epoch ms on the wire | 3.2, 2.4 | |
 | iOS Event Model 3 | Lowercase UUIDv7 port | 2.3 | `UuidV7GeneratorTests` (version and variant, timestamp field, 10 000 in one millisecond, clock back, overflow, scripted draws give known ids, many threads, lowercase parsed by Foundation `UUID`) |
-| iOS Configuration 1 | Struct, no freezing | 3.1 | |
-| iOS Configuration 2 | `debug` default from the build flag; `developerError` | 3.1, 2.2 | |
-| iOS Configuration 3 | `host: String` validated | 3.1 | |
+| iOS Configuration 1 | Struct, no freezing | 3.1 | `ConfigurationDefaultsTests`, `ConfigValidatorTests` (value semantics: later writes never reach the snapshot; every value reaches it) |
+| iOS Configuration 2 | `debug` default from the build flag; `developerError` | 3.1, 2.2 | `ConfigurationDefaultsTests` (`defaultDebug` follows `#if DEBUG`; the nightly release-configuration run flips it), `ConfigValidatorTests` (developer errors recorded in debug, clamping and logging in release) |
+| iOS Configuration 3 | `host: String` validated | 3.1 | `ConfigValidatorTests` (the Android host table accepted and rejected, trailing slash, `http://` WARN naming App Transport Security) |
 | iOS Identity 1 | Files excluded from backup; no Keychain, no IDFV | 4.1, 7.1 | |
 | iOS Context 1 | Field sources; no `api_level`, no `carrier`; the locale rule; sixteen fields | 7.3 | |
 | iOS Context 2 | `screen` static; network type from the shared monitor | 7.2, 7.3 | |
@@ -705,7 +705,7 @@ without a test blocks the release.
 - [x] 2.3 Identifiers and time
 - [x] 2.4 JSON layer
 - [x] 2.5 Property validation and normalization
-- [ ] 3.1 Configuration
+- [x] 3.1 Configuration
 - [ ] 3.2 Event model and public types
 - [ ] 3.3 The `Analytics` protocol
 - [ ] 4.1 Key-value stores
@@ -781,6 +781,9 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-11 | 2.5 | `developerError` in practice | `Log.developerError(_:)` calls an injected handler, `assertionFailure` by default: a debug build traps, a release build returns, and the caller then logs the problem exactly as with `debug` off, so nothing is ever silent (Android threw instead). Tests inject a recording handler through `TestPlatform.log()`, so the debug path is testable without ending the process. | iOS Configuration 2 (as decided) |
 | 2026-10-11 | 2.5 | What a "character" is in the limits | UTF-16 code units, as Kotlin's `length`: 255 for names and keys, 1024 for strings, truncation never inside a surrogate pair. Swift's `count` (grapheme clusters) would make the two SDKs cut the same string at different places. | Root `CLAUDE.md` Public API (limits) |
 | 2026-10-11 | 2.5 | Swift details found while porting | An `@objc` enum passed from Swift is a Swift value, not an `NSNumber`, and describes itself as `Type(rawValue: n)`; it is sent as its raw value, the outcome the page documents for the Objective-C path. `Float.nan` bridges to a double `NSNumber`, so its type is reported as `Double`. A Swift dictionary is unordered, so which properties survive the 256 limit is arbitrary, as with a `HashMap`. Depth 4 containers and self-referencing `NSMutableDictionary` or `NSMutableArray` values are dropped with `tooDeep`. | - |
+| 2026-10-12 | 3.1 | `beforeSend` and `logging.eventObserver` | Added in 3.2 with `BeforeSend`, `Event` and `EventObserver`, as on Android (log row 3.1); adding a `var` with a default to a struct is compatible. | Steps 3.1 and 3.2 |
+| 2026-10-12 | 3.1 | Host validation through `URLComponents` | `URL(string:)` accepts most of the Android reject list (iOS Configuration 3), so `Hosts.normalize` checks `URLComponents`: scheme `http` or `https` in any case, a non-empty host, no query, fragment, user or password, no surrounding whitespace, trailing slashes removed, the text otherwise kept as given (`HTTPS://` stays uppercase, as on Android). The snapshot carries the parsed `URL` next to the text. | - |
+| 2026-10-12 | 3.1 | Testing both `debug` defaults | `defaultDebug` is a `#if DEBUG` constant, so one test build sees one value; the nightly workflow gains `swift test -c release -Xswiftc -enable-testing`, which runs the whole suite with the release default and the optimizer on (also the closest the tests get to a Release build's `assertionFailure` being a no-op). | `nightly.yml` |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release

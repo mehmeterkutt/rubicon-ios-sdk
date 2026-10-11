@@ -1,6 +1,16 @@
+swift.enum Autocapture: enum Autocapture
+swift.enum Consent: enum Consent
 swift.enum ContextField: enum ContextField
 swift.enum LogLevel: enum LogLevel
 swift.enum PropertyValue: enum PropertyValue
+swift.enum.case Autocapture.appLifecycle: case appLifecycle
+swift.enum.case Autocapture.deepLinks: case deepLinks
+swift.enum.case Autocapture.installUpdate: case installUpdate
+swift.enum.case Autocapture.networkRequests: case networkRequests
+swift.enum.case Autocapture.screenViews: case screenViews
+swift.enum.case Autocapture.sessions: case sessions
+swift.enum.case Consent.granted: case granted
+swift.enum.case Consent.pending: case pending
 swift.enum.case ContextField.appBuild: case appBuild
 swift.enum.case ContextField.appName: case appName
 swift.enum.case ContextField.appNamespace: case appNamespace
@@ -30,4 +40,45 @@ swift.enum.case PropertyValue.null: case null
 swift.enum.case PropertyValue.object(_:): case object([String : PropertyValue])
 swift.enum.case PropertyValue.string(_:): case string(String)
 swift.func.op LogLevel.<(_:_:): static func < (lhs: LogLevel, rhs: LogLevel) -> Bool
+swift.init AnalyticsConfiguration.init(apiKey:): init(apiKey: String)
+swift.init AutocaptureConfiguration.init(): init()
+swift.init ContextConfiguration.init(): init()
+swift.init FlushConfiguration.init(): init()
+swift.init LoggingConfiguration.init(): init()
+swift.init NetworkConfiguration.init(): init()
+swift.init PrivacyConfiguration.init(): init()
+swift.init SessionConfiguration.init(): init()
+swift.property AnalyticsConfiguration.apiKey: let apiKey: String
+swift.property AnalyticsConfiguration.autocapture: var autocapture: AutocaptureConfiguration
+swift.property AnalyticsConfiguration.context: var context: ContextConfiguration
+swift.property AnalyticsConfiguration.debug: var debug: Bool
+swift.property AnalyticsConfiguration.description: var description: String { get }
+swift.property AnalyticsConfiguration.flush: var flush: FlushConfiguration
+swift.property AnalyticsConfiguration.host: var host: String
+swift.property AnalyticsConfiguration.logging: var logging: LoggingConfiguration
+swift.property AnalyticsConfiguration.network: var network: NetworkConfiguration
+swift.property AnalyticsConfiguration.privacy: var privacy: PrivacyConfiguration
+swift.property AnalyticsConfiguration.session: var session: SessionConfiguration
+swift.property AutocaptureConfiguration.enabled: var enabled: Set<Autocapture>
+swift.property ContextConfiguration.disabledFields: var disabledFields: Set<ContextField>
+swift.property FlushConfiguration.at: var at: Int
+swift.property FlushConfiguration.immediateEvents: var immediateEvents: Set<String>
+swift.property FlushConfiguration.intervalMs: var intervalMs: Int64
+swift.property LoggingConfiguration.level: var level: LogLevel
+swift.property LoggingConfiguration.logger: var logger: RubiconLogger?
+swift.property LoggingConfiguration.sendDiagnostics: var sendDiagnostics: Bool
+swift.property NetworkConfiguration.headers: var headers: [String : String]
+swift.property PrivacyConfiguration.defaultConsent: var defaultConsent: Consent
+swift.property PrivacyConfiguration.persistConsent: var persistConsent: Bool
+swift.property SessionConfiguration.backgroundTimeoutMs: var backgroundTimeoutMs: Int64
+swift.struct AnalyticsConfiguration: struct AnalyticsConfiguration
+swift.struct AutocaptureConfiguration: struct AutocaptureConfiguration
+swift.struct ContextConfiguration: struct ContextConfiguration
+swift.struct FlushConfiguration: struct FlushConfiguration
+swift.struct LoggingConfiguration: struct LoggingConfiguration
+swift.struct NetworkConfiguration: struct NetworkConfiguration
+swift.struct PrivacyConfiguration: struct PrivacyConfiguration
+swift.struct SessionConfiguration: struct SessionConfiguration
+swift.type.property AnalyticsConfiguration.defaultDebug: static let defaultDebug: Bool
+swift.type.property AnalyticsConfiguration.defaultHost: static let defaultHost: String
 swift.typealias RubiconLogger: typealias RubiconLogger = @Sendable (_ level: LogLevel, _ message: String, _ error: (any Error)?) -> Void
