@@ -1,0 +1,34 @@
+name: CI
+
+# The pull request lane (D6): everything that runs on macOS without a simulator. macOS minutes count
+# ten times against the plan, so the simulator suite and the consumer apps live in simulator.yml
+# behind a path filter, and the matrix and Thread Sanitizer run nightly.
+on:
+  pull_request:
+  push:
+    branches: [develop, master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # The release toolchain (plan section 15, 2026-10-11): the last Xcode that builds for iOS 15.
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+
+jobs:
+  check:
+    name: check
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # api-diff.sh compares against the last release tag
+      - run: swift --version && xcodebuild -version
+      # format lint, build (macOS and simulator), tests with coverage, source rules,
+      # required-reason grep, API record, documentation
+      - run: Scripts/check.sh

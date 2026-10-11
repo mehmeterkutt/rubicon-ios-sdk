@@ -32,8 +32,23 @@ differences.
 
 ## Commands
 
-Filled in step 1.1 (`Scripts/check.sh` runs format lint, build, tests, API diff, coverage and the
-source rules; the individual commands are listed there).
+```bash
+Scripts/check.sh              # everything the pull request lane runs: format lint, swift build (macOS and
+                              # iOS 15 simulator triple), swift test with coverage gates, source rules,
+                              # required-reason grep, public API record, documentation check
+Scripts/check.sh --all        # plus the simulator suite, the three consumer apps and the DocC build
+Scripts/format.sh             # swift format in place; before every commit
+swift test --filter QueueTests
+Scripts/test-simulator.sh [15]   # RubiconTests and RubiconObjCTests on the newest (or iOS 15) simulator
+Scripts/build-consumer-apps.sh   # XcodeGen + xcodebuild for Swift5App, Swift6App, ObjCApp
+Scripts/api-diff.sh --update  # after a public API change; commit API/*.txt
+Scripts/refresh-golden.sh     # copy the Android golden files again (ANDROID_SDK_DIR overrides the path)
+swift test --sanitize=thread  # Thread Sanitizer on the core tests (nightly in CI)
+```
+
+Local toolchain is Xcode 27 (Swift 6.4); the release toolchain is Xcode 26.6 on the `macos-26`
+runner, the last that builds for the iOS 15 floor. CI is the gate: a build that passes locally and
+fails there is fixed, not waved through. Keep the sources inside `swift-tools-version` 6.0.
 
 ## Non-negotiables
 
@@ -42,3 +57,13 @@ forever, everything internal unless it must be public, no new dependencies, docu
 public symbol, a diff that defines a public API change. iOS additions: no `print`; no `#available`
 checks (iOS 15 is the floor, iOS Public API 2); no required-reason API outside the two declared
 categories (iOS Privacy 1); no UIKit import outside `Rubicon`; Swift 6 language mode in every target.
+
+## Git and pull requests
+
+- `master` holds releases, `develop` the next one. One plan phase is one `feature/<topic>` branch
+  from `develop` and one pull request; each step in it is one commit, reviewed by the user before it
+  is made. Conventional Commits (`feat(queue): ...`, `build: ...`). Squash merge into `develop`.
+- Before committing: `Scripts/format.sh`, then `Scripts/check.sh` green.
+- Stop for review with the changes uncommitted; commit, push and open the pull request only after
+  the user approves. Never merge, never push to `develop` or `master`.
+- The description follows `.github/pull_request_template.md`.

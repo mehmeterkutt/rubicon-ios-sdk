@@ -1,0 +1,27 @@
+# XcodeGen spec (D10); the .xcodeproj is generated, never committed.
+name: Swift5App
+options:
+  bundleIdPrefix: com.rubicon.analytics.consumer
+  deploymentTarget:
+    iOS: "15.0"
+  xcodeVersion: "16.0"
+packages:
+  Rubicon:
+    path: ../..
+targets:
+  Swift5App:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    dependencies:
+      - package: Rubicon
+        product: Rubicon
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rubicon.analytics.consumer.swift5app
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: NO
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO

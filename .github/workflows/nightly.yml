@@ -1,0 +1,44 @@
+name: Nightly
+
+# The matrix of D11 and Thread Sanitizer: the newest simulator runtime and the oldest one Xcode 26.6
+# can install, and the core tests under TSan. Nightly and on demand, never per pull request.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+
+jobs:
+  thread-sanitizer:
+    name: core tests under TSan
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --sanitize=thread
+
+  simulator-matrix:
+    name: simulator ${{ matrix.runtime }}
+    runs-on: macos-26
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: newest
+          - runtime: oldest
+            ios: "15"
+            download: "15.5"
+    steps:
+      - uses: actions/checkout@v4
+      - if: matrix.download != ''
+        # Installs the oldest runtime the release toolchain supports (iOS Public API 2). Verified on
+        # the first nightly run; see plan section 15.
+        run: xcodebuild -downloadPlatform iOS -buildVersion ${{ matrix.download }}
+      - run: xcrun simctl list runtimes
+      - run: Scripts/test-simulator.sh ${{ matrix.ios }}
