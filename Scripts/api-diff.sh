@@ -21,7 +21,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 for m in $modules; do
     python3 - "$dir/$m.symbols.json" > "$tmp/$m.txt" <<'PY'
-import json, sys
+import json, re, sys
 g = json.load(open(sys.argv[1]))
 module = g["module"]["name"]
 lines = []
@@ -35,6 +35,11 @@ for s in g.get("symbols", []):
     if f"/Sources/{module}/" not in uri:
         continue
     decl = "".join(f["spelling"] for f in s.get("declarationFragments", []))
+    # Toolchains disagree on closure typealiases: Xcode 27 spells the unlabeled parameter names
+    # (`_ level: LogLevel`), Xcode 26 does not. The names are not callable API, so they are dropped
+    # here and the record reads the same under both.
+    if s["kind"]["identifier"] == "swift.typealias":
+        decl = re.sub(r"\b_ [A-Za-z_][A-Za-z0-9_]*: ", "", decl)
     path = ".".join(s["pathComponents"])
     lines.append(f"{s['kind']['identifier']} {path}: {decl}")
 sys.stdout.write("".join(line + "\n" for line in sorted(set(lines))))

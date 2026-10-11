@@ -195,4 +195,4 @@ swift.type.property AnalyticsConfiguration.defaultDebug: static let defaultDebug
 swift.type.property AnalyticsConfiguration.defaultHost: static let defaultHost: String
 swift.typealias BeforeSend: typealias BeforeSend = @Sendable (any Event) -> (any Event)?
 swift.typealias EventObserver: typealias EventObserver = @Sendable (EventUpdate) -> Void
-swift.typealias RubiconLogger: typealias RubiconLogger = @Sendable (_ level: LogLevel, _ message: String, _ error: (any Error)?) -> Void
+swift.typealias RubiconLogger: typealias RubiconLogger = @Sendable (LogLevel, String, (any Error)?) -> Void
