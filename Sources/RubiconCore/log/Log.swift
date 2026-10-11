@@ -27,17 +27,22 @@ package final class Log: Sendable {
     package let level: LogLevel
     package let callbacks: CallbackGuard
     private let issues: IssueCounter
+    private let developerErrorHandler: @Sendable (String) -> Void
     private let reported = Locked<Set<Code>>([])
     private let reportedKeys = Locked<Set<String>>([])
 
     /// Creates the instance's log; `platformLogger` is the `os.Logger` sink on iOS and nothing in
-    /// the core, and also the fallback for a logger that failed.
+    /// the core, and also the fallback for a logger that failed. `developerError` is what a
+    /// developer mistake does when `configuration.debug` is on: `assertionFailure` in production,
+    /// a recording closure in tests (iOS Configuration 2).
     package init(
         level: LogLevel, logger: RubiconLogger?, platformLogger: @escaping RubiconLogger,
-        issues: @escaping IssueCounter = { _ in }
+        issues: @escaping IssueCounter = { _ in },
+        developerError: @escaping @Sendable (String) -> Void = { assertionFailure($0) }
     ) {
         self.level = level
         self.issues = issues
+        developerErrorHandler = developerError
         callbacks = CallbackGuard(logger: logger, fallback: platformLogger)
         callbacks.onLoggerFailed = { [weak self] error in
             self?.warn(.loggerThrew, error) { "Custom logger threw; falling back to the default logger" }
@@ -45,6 +50,13 @@ package final class Log: Sendable {
         callbacks.onObserverFailed = { [weak self] error in
             self?.error(.observerThrew, error) { "Event observer threw; it is switched off" }
         }
+    }
+
+    /// Reports a developer mistake loudly: traps in a debug build through `assertionFailure`. In a
+    /// release build the call returns, so the caller logs the problem afterwards as it would with
+    /// `debug` off; nothing is ever silent (iOS Configuration 2).
+    package func developerError(_ message: String) {
+        developerErrorHandler(message)
     }
 
     package func isEnabled(_ level: LogLevel) -> Bool {

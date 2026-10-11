@@ -61,10 +61,16 @@ package final class TestPlatform: Sendable {
             logger: logger.asLogger, storageRoot: self.storageRoot, fileSystem: fileSystem)
     }
 
-    /// A `Log` at `level` that writes to this platform's recording logger, for components that take
-    /// one directly.
+    /// Developer errors reported through logs made by `log(level:logger:)`, in order, instead of
+    /// trapping (iOS Configuration 2).
+    package let developerErrors = Locked<[String]>([])
+
+    /// A `Log` at `level` that writes to this platform's recording logger and records developer
+    /// errors, for components that take one directly.
     package func log(level: LogLevel = .debug, logger: RubiconLogger? = nil) -> Log {
-        Log(level: level, logger: logger, platformLogger: self.logger.asLogger)
+        Log(
+            level: level, logger: logger, platformLogger: self.logger.asLogger,
+            developerError: { [developerErrors] message in developerErrors.withLock { $0.append(message) } })
     }
 
     /// A fresh, empty directory under the system temporary directory.

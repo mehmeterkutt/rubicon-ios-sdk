@@ -656,7 +656,7 @@ without a test blocks the release.
 | iOS Public API 2 | iOS 15, tools 6.0, no `#available` | 1.1 | `check.sh` builds every target for `arm64-apple-ios15.0-simulator`; source rule `no-available` with its self-test |
 | iOS Public API 3 | Swift 6 mode, `Sendable` public types, `@Sendable` hooks, no `async`; Swift 5 and 6 clients | 1.1, 3.2, 8.2 | `swiftLanguageModes: [.v6]`; `Swift5App` and `Swift6App` (strict concurrency, warnings as errors) build; source rules `no-async-public-api`, `no-task-public-api`, `unjustified-unchecked-sendable` |
 | iOS Public API 4 | `RubiconAnalytics.make(configuration:) -> any Analytics` | 7.1 | |
-| iOS Public API 5 | `[String: Any]` to `PropertyValue`, `CFBooleanGetTypeID` | 2.5 | |
+| iOS Public API 5 | `[String: Any]` to `PropertyValue`, `CFBooleanGetTypeID` | 2.5 | `PropertyNormalizerConversionTests` (the four boxed-boolean cases, `PropertyValue` as the output); the `[String: Any]` entry points in 3.3 |
 | iOS Public API 6 | `BeforeSend` closure, value-type `Event`, no `throws`; wrapper catches `NSException` | 3.2, 6.3a, 7.7 | |
 | iOS Public API 7 | Labels, properties, `Analytics`, `RubiconAnalytics`, `Rubicon`, `RBN` | 3.3, 7.7 | |
 | iOS Public API 8 | Three targets, iOS only, SwiftPM, zero dependencies, API diff | 1.1 | `Package.swift` has no dependencies; `api-diff.sh` records the public symbols per module in `API/` and runs `diagnose-api-breaking-changes` once a tag exists; source rule `no-uikit-outside-rubicon` |
@@ -682,7 +682,7 @@ without a test blocks the release.
 | iOS Disk 2 | `F_FULLFSYNC` with `fsync` fallback | 4.1 | |
 | iOS Disk 3 | No timestamps, sizes in memory, one startup size read, no disk space API | 4.2, 7.8 | |
 | iOS Serialization 1 | `JSONSerialization` with `.sortedKeys`; the number text warning; structural golden | 2.4, 8.4 | `JsonTests` (every value type, sorted compact output, `{"coupon":null}`, the pinned behaviours `50`, `\/`, `49.899999999999999`, `1e+21`, NaN refused; round trips; `JSONDecoder` as the independent parser; typed reads; fragments and trailing content rejected) |
-| iOS Serialization 2 | The Swift conversion table; the enum caveat | 2.5 | |
+| iOS Serialization 2 | The Swift conversion table; the enum caveat | 2.5 | `PropertyNormalizerConversionTests` (one test per row: integer widths, `UInt64` over range, `Float` and `Decimal` text, `CGFloat`, `Character`, `Date`, `URL`, enums incl. the `CustomStringConvertible` and `@objc` caveats, sets and slices, non-string keys, bridged lone surrogate, unsupported types), `PropertyNormalizerLimitTests` (every limit at, below and above), `PropertyProblemReportingTests`, `PropertyNormalizerFuzzTests` |
 | iOS Serialization 3 | `ISO8601DateFormatter`, range rule, Android vectors | 2.3 | `IsoDatesTests` (the Android vectors incl. years 0000 and 9999, range rule, 100 000 instants against `Calendar` from 1583 on, day round trip over the range); see the 2026-10-11 log row on the Julian cutover |
 | iOS HTTP 1 | Ephemeral session, 20 s and 45 s, redirects refused, semaphore | 5.1 | |
 | iOS HTTP 2 | gzip through `zlib` | 5.1 | |
@@ -704,7 +704,7 @@ without a test blocks the release.
 - [x] 2.2 Logging infrastructure
 - [x] 2.3 Identifiers and time
 - [x] 2.4 JSON layer
-- [ ] 2.5 Property validation and normalization
+- [x] 2.5 Property validation and normalization
 - [ ] 3.1 Configuration
 - [ ] 3.2 Event model and public types
 - [ ] 3.3 The `Analytics` protocol
@@ -778,6 +778,9 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-11 | 2.3 | HTTP dates | `HttpDates.parse` is the Android parser over the same `daysFromCivil`, including the obsolete-form, day-name and leap-second rules of Android log 2.3; `Hashing.sha256Hex` uses `CryptoKit`. | - |
 | 2026-10-11 | 2.4 | `Json.write` on a non-finite double | Throws `JsonError.notFinite(path:)` naming the path, the Swift form of Android's `IllegalArgumentException`: the normalizer never produces one, so a throw there is a caller bug, and the serializer will treat it as such. | - |
 | 2026-10-11 | 2.4 | What `JSONSerialization` accepts and writes | Confirmed by the pinned tests on this Foundation: top-level fragments (`12`, `"text"`, `null`) and trailing content after an object are rejected without options, so the Android "trailing content is corrupt" rule needs no extra check; integers read back as `NSNumber` with an integral `objCType` and `50` written from `50.0` reads back as `.int(50)`; `1.5e-7` is written as `1.4999999999999999e-07`. `PropertyValue` is defined in this step, since the writer takes it; the normalizer that produces it is 2.5. | - |
+| 2026-10-11 | 2.5 | `developerError` in practice | `Log.developerError(_:)` calls an injected handler, `assertionFailure` by default: a debug build traps, a release build returns, and the caller then logs the problem exactly as with `debug` off, so nothing is ever silent (Android threw instead). Tests inject a recording handler through `TestPlatform.log()`, so the debug path is testable without ending the process. | iOS Configuration 2 (as decided) |
+| 2026-10-11 | 2.5 | What a "character" is in the limits | UTF-16 code units, as Kotlin's `length`: 255 for names and keys, 1024 for strings, truncation never inside a surrogate pair. Swift's `count` (grapheme clusters) would make the two SDKs cut the same string at different places. | Root `CLAUDE.md` Public API (limits) |
+| 2026-10-11 | 2.5 | Swift details found while porting | An `@objc` enum passed from Swift is a Swift value, not an `NSNumber`, and describes itself as `Type(rawValue: n)`; it is sent as its raw value, the outcome the page documents for the Objective-C path. `Float.nan` bridges to a double `NSNumber`, so its type is reported as `Double`. A Swift dictionary is unordered, so which properties survive the 256 limit is arbitrary, as with a `HashMap`. Depth 4 containers and self-referencing `NSMutableDictionary` or `NSMutableArray` values are dropped with `tooDeep`. | - |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release
