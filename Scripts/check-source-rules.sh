@@ -54,10 +54,14 @@ check_file() {
         if [ "$scope" = log ]; then
             # Every log call (`log.<level>(` or `logger.<level>(`) and its balanced arguments.
             perl -e '
+                sub balanced { my ($t, $j, $o, $c) = @_; my $d = 0;
+                    while ($j < length $t) { my $ch = substr($t, $j, 1); $d++ if $ch eq $o; $d-- if $ch eq $c; $j++; last if $d == 0; } return $j; }
                 local $/; my $t = <STDIN>; my $re = shift;
-                while ($t =~ /\b(?:log|logger)\s*\.\s*(?:debug|info|warn|error)\s*\(/g) {
-                    my $start = pos($t) - 1; my $depth = 0; my $j = $start;
-                    while ($j < length $t) { my $c = substr($t, $j, 1); $depth++ if $c eq "("; $depth-- if $c eq ")"; $j++; last if $depth == 0; }
+                while ($t =~ /\b(?:log|logger)\s*\.\s*(?:debug|info|warn|error)\s*[\({]/g) {
+                    my $start = pos($t) - 1; my $j = $start;
+                    $j = balanced($t, $j, "(", ")") if substr($t, $j, 1) eq "(";
+                    my $k = $j; $k++ while $k < length $t && substr($t, $k, 1) =~ /\s/;
+                    $j = balanced($t, $k, "{", "}") if substr($t, $k, 1) eq "{";
                     my $call = substr($t, $start, $j - $start);
                     if ($call =~ /$re/) { my $line = 1 + (substr($t, 0, $start) =~ tr/\n//); print "$line\n"; }
                 }' "$pattern" <<< "$stripped" | while read -r line; do
@@ -120,6 +124,8 @@ public var task: Task<Void, Never>?
 log.debug("user \(userId)")
 logger.warn(.x, "count \(properties.count)")
 log.info("names \(Array(properties.keys))")
+log.warn(.code) { "key \(apiKey)" }
+log.debug { "fine \(count)" }
 final class Box: @unchecked Sendable {}
 // guarded by `lock`
 final class Good: @unchecked Sendable {}
@@ -155,7 +161,8 @@ Sources/RubiconCore/Bad.swift:10: no-task-public-api
 Sources/RubiconCore/Bad.swift:11: no-values-in-log
 Sources/RubiconCore/Bad.swift:12: no-values-in-log
 Sources/RubiconCore/Bad.swift:13: no-values-in-log
-Sources/RubiconCore/Bad.swift:14: unjustified-unchecked-sendable
+Sources/RubiconCore/Bad.swift:14: no-values-in-log
+Sources/RubiconCore/Bad.swift:16: unjustified-unchecked-sendable
 Sources/Rubicon/Clean.swift:7: no-values-in-log
 EXPECTED
 )

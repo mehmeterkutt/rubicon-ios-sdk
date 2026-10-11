@@ -1,7 +1,9 @@
 {
   "version": 1,
   "lineLength": 120,
-  "indentation": { "spaces": 4 },
+  "indentation": {
+    "spaces": 4
+  },
   "maximumBlankLines": 1,
   "respectsExistingLineBreaks": true,
   "lineBreakBeforeControlFlowKeywords": false,
@@ -9,15 +11,20 @@
   "indentConditionalCompilationBlocks": true,
   "indentSwitchCaseLabels": false,
   "multiElementCollectionTrailingCommas": true,
-  "fileScopedDeclarationPrivacy": { "accessLevel": "private" },
-  "orderedImports": { "shouldGroupImports": true, "includeConditionalImports": false },
+  "fileScopedDeclarationPrivacy": {
+    "accessLevel": "private"
+  },
+  "orderedImports": {
+    "shouldGroupImports": true,
+    "includeConditionalImports": false
+  },
   "rules": {
     "AllPublicDeclarationsHaveDocumentation": true,
     "AlwaysUseLiteralForEmptyCollectionInit": true,
     "AlwaysUseLowerCamelCase": true,
     "AmbiguousTrailingClosureOverload": true,
     "AvoidRetroactiveConformances": true,
-    "BeginDocumentationCommentWithOneLineSummary": true,
+    "BeginDocumentationCommentWithOneLineSummary": false,
     "DoNotUseSemicolons": true,
     "DontRepeatTypeInStaticProperties": true,
     "FileScopedDeclarationPrivacy": true,

@@ -39,10 +39,11 @@ on. "Android log 5.1" means the rows of step 5.1 in section 15 of the Android pl
 
 1. At the start of a session read `CLAUDE.md`, then section 14 (Status) of this file, and take the
    first unchecked step. Do not work on two steps at once.
-2. One phase (a numbered section 7 to 12) is one branch (`feature/<topic>`, from `develop`, no
-   number) and one pull request; every step inside it is one commit, made only after the user has
-   reviewed the step's changes (decided 2026-10-11, section 15). A step that turns out too big is
-   split, and the split is written into this file first.
+2. Phases 2 to 5 (steps 2.1 to 5.3) are one branch, `feature/core-foundations`, and one pull
+   request; every step is one commit, made without a review stop, and questions are still asked
+   when a decision is missing (decided 2026-10-11, section 15). Phase 6 onwards: one phase is one
+   branch and one pull request, one commit per step, reviewed by the user before each commit. A
+   step that turns out too big is split, and the split is written into this file first.
 3. Before writing code for a step, read the decisions listed under "Read" in full, iOS page first,
    then the Android page it inherits from, then the Android code named under "Port". Read the
    reference SDK code named there when the step says so.
@@ -55,9 +56,9 @@ on. "Android log 5.1" means the rows of step 5.1 in section 15 of the Android pl
    `CLAUDE.md` rule need the change; update them after approval. A change to the contract itself is
    a change to the Android page and the backend as well, and is taken only with the user.
 6. Done means every item of section 6 (Definition of done) holds. Then tick the step in section 14,
-   fill its rows in the traceability table (section 13) and stop for review with the changes
-   uncommitted. Commit, push and open the pull request only after the user approves. Never merge,
-   and never push to `develop` or `master`.
+   fill its rows in the traceability table (section 13) and commit (on the core-foundations branch)
+   or stop for review with the changes uncommitted (every later branch). Push and open the pull
+   request only after the user approves. Never merge, and never push to `develop` or `master`.
 7. Documents and code comments are in English, without emoji.
 
 ## 3. Open decisions to settle before step 1.1
@@ -654,44 +655,44 @@ without a test blocks the release.
 | iOS Public API 1 | Swift-first API, `RubiconObjC` wrapper in the first release | 1.1, 7.7 | `RubiconObjCTests` (Objective-C, XCTest) runs on the simulator; `ObjCApp` compiles `@import RubiconObjC` |
 | iOS Public API 2 | iOS 15, tools 6.0, no `#available` | 1.1 | `check.sh` builds every target for `arm64-apple-ios15.0-simulator`; source rule `no-available` with its self-test |
 | iOS Public API 3 | Swift 6 mode, `Sendable` public types, `@Sendable` hooks, no `async`; Swift 5 and 6 clients | 1.1, 3.2, 8.2 | `swiftLanguageModes: [.v6]`; `Swift5App` and `Swift6App` (strict concurrency, warnings as errors) build; source rules `no-async-public-api`, `no-task-public-api`, `unjustified-unchecked-sendable` |
-| iOS Public API 4 | `RubiconAnalytics.make(configuration:) -> any Analytics` | 7.1 | |
-| iOS Public API 5 | `[String: Any]` to `PropertyValue`, `CFBooleanGetTypeID` | 2.5 | |
-| iOS Public API 6 | `BeforeSend` closure, value-type `Event`, no `throws`; wrapper catches `NSException` | 3.2, 6.3a, 7.7 | |
-| iOS Public API 7 | Labels, properties, `Analytics`, `RubiconAnalytics`, `Rubicon`, `RBN` | 3.3, 7.7 | |
+| iOS Public API 4 | `RubiconAnalytics.make(configuration:) -> any Analytics` | 7.1 | `NoOpAnalyticsTests` (a fake conforms in a few lines; the no-op reports opted out and an empty id); the factory in 7.1 |
+| iOS Public API 5 | `[String: Any]` to `PropertyValue`, `CFBooleanGetTypeID` | 2.5 | `PropertyNormalizerConversionTests` (the four boxed-boolean cases, `PropertyValue` as the output); the `[String: Any]` entry points in 3.3 |
+| iOS Public API 6 | `BeforeSend` closure, value-type `Event`, no `throws`; wrapper catches `NSException` | 3.2, 6.3a, 7.7 | `EventModelTests` (a hook mutates its copy, the original is unchanged), `HookRulesTests`; the pipeline in 6.3a |
+| iOS Public API 7 | Labels, properties, `Analytics`, `RubiconAnalytics`, `Rubicon`, `RBN` | 3.3, 7.7 | `NoOpAnalyticsTests` (the twelve verbs and two properties, unlabeled first arguments, default arguments through the protocol extension), `API/RubiconCore.txt` |
 | iOS Public API 8 | Three targets, iOS only, SwiftPM, zero dependencies, API diff | 1.1 | `Package.swift` has no dependencies; `api-diff.sh` records the public symbols per module in `API/` and runs `diagnose-api-breaking-changes` once a tag exists; source rule `no-uikit-outside-rubicon` |
-| iOS Event Model 1 | Protocol with three structs | 3.2 | |
-| iOS Event Model 2 | `Date` in memory, epoch ms on the wire | 3.2, 2.4 | |
-| iOS Event Model 3 | Lowercase UUIDv7 port | 2.3 | |
-| iOS Configuration 1 | Struct, no freezing | 3.1 | |
-| iOS Configuration 2 | `debug` default from the build flag; `developerError` | 3.1, 2.2 | |
-| iOS Configuration 3 | `host: String` validated | 3.1 | |
-| iOS Identity 1 | Files excluded from backup; no Keychain, no IDFV | 4.1, 7.1 | |
+| iOS Event Model 1 | Protocol with three structs | 3.2 | `EventModelTests` (copy semantics, fixed fields constant, descriptions, Sendable), `HookRulesTests` (own kind, fixed fields, automatic rules, foreign conformance) |
+| iOS Event Model 2 | `Date` in memory, epoch ms on the wire | 3.2, 2.4 | `EventGoldenTests` (`timestamp` and `started_at` as epoch milliseconds from `Date`) |
+| iOS Event Model 3 | Lowercase UUIDv7 port | 2.3 | `UuidV7GeneratorTests` (version and variant, timestamp field, 10 000 in one millisecond, clock back, overflow, scripted draws give known ids, many threads, lowercase parsed by Foundation `UUID`) |
+| iOS Configuration 1 | Struct, no freezing | 3.1 | `ConfigurationDefaultsTests`, `ConfigValidatorTests` (value semantics: later writes never reach the snapshot; every value reaches it) |
+| iOS Configuration 2 | `debug` default from the build flag; `developerError` | 3.1, 2.2 | `ConfigurationDefaultsTests` (`defaultDebug` follows `#if DEBUG`; the nightly release-configuration run flips it), `ConfigValidatorTests` (developer errors recorded in debug, clamping and logging in release) |
+| iOS Configuration 3 | `host: String` validated | 3.1 | `ConfigValidatorTests` (the Android host table accepted and rejected, trailing slash, `http://` WARN naming App Transport Security) |
+| iOS Identity 1 | Files excluded from backup; no Keychain, no IDFV | 4.1, 7.1 | `DeviceStoreTests` (a missing file gets a new id from the shared generator's closure; unreadable keeps a temporary id and never writes; locked mints nothing), `FileKeyValueStoreTests` (directory excluded from backup) |
 | iOS Context 1 | Field sources; no `api_level`, no `carrier`; the locale rule; sixteen fields | 7.3 | |
 | iOS Context 2 | `screen` static; network type from the shared monitor | 7.2, 7.3 | |
 | iOS Session 1 | `willEnterForeground`, `didEnterBackground`, startup `applicationState` | 7.4, 6.2 | |
-| iOS Session 2 | `systemUptime` under `35F9.1` | 7.1, 2.1, 7.8 | |
+| iOS Session 2 | `systemUptime` under `35F9.1` | 7.1, 2.1, 7.8 | `FakeClocksTests` (elapsed clock only moves forward); the real clock in 7.1 |
 | iOS Lifecycle 1 | One swizzle, `viewDidAppear`, behind `screenViews` | 7.5 | |
 | iOS Lifecycle 2 | `ScreenNamed`, class names, `UIHostingController` skipped, re-send on foreground | 7.5 | |
 | iOS Lifecycle 3 | Two `trackDeepLink` methods, the gate | 3.3, 7.5 | |
 | iOS Lifecycle 4 | Install and update from file dates under `C617.1`; fallback; Apple verification | 7.4, 7.8 | |
 | iOS Lifecycle 5 | `RubiconNetworkObserver` | 7.6 | |
-| iOS Queue 1 | Two serial queues, bounded channel, atomic flag, `Scheduler` | 2.1, 6.3b, 6.4 | |
+| iOS Queue 1 | Two serial queues, bounded channel, atomic flag, `Scheduler` | 2.1, 6.3b, 6.4 | `TestSchedulerTests` (due order, never early, cancellation, re-entrant work), `GCDSchedulerTests` (serial per worker, `assertOn`) |
 | iOS Queue 2 | Background task, expiration cancels, `willTerminate`, `.appex` no-op | 6.3b, 6.4, 7.1, 7.4, 8.3 | |
-| iOS Disk 1 | Host protection class inherited; the locked state | 4.1, 4.2, 6.3b, 7.1 | |
-| iOS Disk 2 | `F_FULLFSYNC` with `fsync` fallback | 4.1 | |
-| iOS Disk 3 | No timestamps, sizes in memory, one startup size read, no disk space API | 4.2, 7.8 | |
-| iOS Serialization 1 | `JSONSerialization` with `.sortedKeys`; the number text warning; structural golden | 2.4, 8.4 | |
-| iOS Serialization 2 | The Swift conversion table; the enum caveat | 2.5 | |
-| iOS Serialization 3 | `ISO8601DateFormatter`, range rule, Android vectors | 2.3 | |
-| iOS HTTP 1 | Ephemeral session, 20 s and 45 s, redirects refused, semaphore | 5.1 | |
-| iOS HTTP 2 | gzip through `zlib` | 5.1 | |
-| iOS HTTP 3 | `URLError` to `FailureKind`, `cancelled`, ATS as `tls`, blocked host, observer `error` values | 5.1, 7.6 | |
-| iOS HTTP 4 | User-Agent; TLS, pinning and proxies through the platform | 5.1, 8.5 | |
-| iOS Retry 1 | `NWPathMonitor`, `.requiresConnection` connected, optimistic start | 7.2 | |
-| iOS Retry 2 | `systemUptime` for waits; `cancelled` as waiting | 5.2 | |
+| iOS Disk 1 | Host protection class inherited; the locked state | 4.1, 4.2, 6.3b, 7.1 | `FakeFileSystemTests` (`locked` is `permissionDenied` for every operation but `exists`), `PosixFileSystemTests` (`notFound` apart from I/O errors); `FileKeyValueStoreTests`, `DeviceStoreTests`, `PersonStoreTests` (`locked` reads and writes: nothing loaded, nothing minted, nothing counted, the change kept and written after unlock); `FileEventStoreFailureTests` (`suspend`, `append` and `writeBatch` locked, `open` deferred); the writer's handling in 6.3b |
+| iOS Disk 2 | `F_FULLFSYNC` with `fsync` fallback | 4.1 | `FileKeyValueStoreTests` (a failed sync never reaches the file; `.tmp`, sync, rename); `PosixFileSystemTests` (`F_FULLFSYNC` with the `fsync` fallback flag) |
+| iOS Disk 3 | No timestamps, sizes in memory, one startup size read, no disk space API | 4.2, 7.8 | `FileEventStoreTests` (indexes from names, sizes from what the writer wrote, no timestamp or size read at all; `envelope.json` body) |
+| iOS Serialization 1 | `JSONSerialization` with `.sortedKeys`; the number text warning; structural golden | 2.4, 8.4 | `JsonTests` (every value type, sorted compact output, `{"coupon":null}`, the pinned behaviours `50`, `\/`, `49.899999999999999`, `1e+21`, NaN refused; round trips; `JSONDecoder` as the independent parser; typed reads; fragments and trailing content rejected) |
+| iOS Serialization 2 | The Swift conversion table; the enum caveat | 2.5 | `PropertyNormalizerConversionTests` (one test per row: integer widths, `UInt64` over range, `Float` and `Decimal` text, `CGFloat`, `Character`, `Date`, `URL`, enums incl. the `CustomStringConvertible` and `@objc` caveats, sets and slices, non-string keys, bridged lone surrogate, unsupported types), `PropertyNormalizerLimitTests` (every limit at, below and above), `PropertyProblemReportingTests`, `PropertyNormalizerFuzzTests` |
+| iOS Serialization 3 | `ISO8601DateFormatter`, range rule, Android vectors | 2.3 | `IsoDatesTests` (the Android vectors incl. years 0000 and 9999, range rule, 100 000 instants against `Calendar` from 1583 on, day round trip over the range); see the 2026-10-11 log row on the Julian cutover |
+| iOS HTTP 1 | Ephemeral session, 20 s and 45 s, redirects refused, semaphore | 5.1 | `TransportRequestTests` (ephemeral session, headers, `Content-Length`), `TransportResponseTests` (redirect delivered as the response, 304), `TransportFailureTests` (request and resource timeouts, `cancelCurrent`) |
+| iOS HTTP 2 | gzip through `zlib` | 5.1 | `TransportRequestTests` (gzip body decompressed and compared, header bytes `1f 8b`, uncompressed fallback with `COMPRESSION_FAILED`), `HostResolverTests` (gzip round trip) |
+| iOS HTTP 3 | `URLError` to `FailureKind`, `cancelled`, ATS as `tls`, blocked host, observer `error` values | 5.1, 7.6 | `TransportFailureTests` (the whole `URLError` table, `cancelled`, `dns`, `connect`, `io`, `unexpected`, blocked host through an injected resolver, localhost and IP literals skipped), `HostResolverTests` |
+| iOS HTTP 4 | User-Agent; TLS, pinning and proxies through the platform | 5.1, 8.5 | `TransportRequestTests` (`User-Agent: rubicon-ios/0.1.0 (iOS 17.5.1)`); ATS through the mapping only, the real refusal needs an app (8.1) |
+| iOS Retry 1 | `NWPathMonitor`, `.requiresConnection` connected, optimistic start | 7.2 | `FakeSignalsTests` (listener tokens, only changes heard); the real monitor in 7.2 |
+| iOS Retry 2 | `systemUptime` for waits; `cancelled` as waiting | 5.2 | `RetryBackoffTests` (waits on the elapsed clock while the wall clock moves back), `RetryDecisionTests` (`cancelled` five times leaves step, wait and attempts unchanged, `last_failure` is `cancelled`, the next trigger tries at once), `RetryPersistenceTests` (clock guard at restore) |
 | iOS Privacy 1 | The manifest; the label table; the required-reason grep | 1.1, 7.8, 8.5 | `PrivacyInfo.xcprivacy` declared as a resource; `check-required-reason-apis.sh` |
-| iOS Logging 1 | Closure logger, `os.Logger` sink, level mapping, `privacy: .public`, no `print` | 2.2, 7.1 | |
-| iOS Logging 2 | `EventObserver` enum, `RBNEventUpdate`, `threadDictionary` guard, trap rule | 2.2, 3.2, 7.7 | |
+| iOS Logging 1 | Closure logger, `os.Logger` sink, level mapping, `privacy: .public`, no `print` | 2.2, 7.1 | `LogTests` (closure logger, level gating, repeat limit, `repeatKey`, no-op default); the `os.Logger` sink in 7.1 |
+| iOS Logging 2 | `EventObserver` enum, `RBNEventUpdate`, `threadDictionary` guard, trap rule | 2.2, 3.2, 7.7 | `LogTests` (thread-dictionary re-entrancy guard, other threads unaffected, failure reports switch once); `EventUpdate` in 3.2, the wrapper in 7.7 |
 | Android decisions, all pages | Inherited unchanged | the ported tests of every step | |
 
 ## 14. Status
@@ -699,19 +700,19 @@ without a test blocks the release.
 - [x] 0 Open decisions D1 to D16 answered and recorded in section 15
 - [x] 1.1 Scaffold
 - [x] 1.2 CLAUDE.md files
-- [ ] 2.1 Platform protocols and test fixtures
-- [ ] 2.2 Logging infrastructure
-- [ ] 2.3 Identifiers and time
-- [ ] 2.4 JSON layer
-- [ ] 2.5 Property validation and normalization
-- [ ] 3.1 Configuration
-- [ ] 3.2 Event model and public types
-- [ ] 3.3 The `Analytics` protocol
-- [ ] 4.1 Key-value stores
-- [ ] 4.2 Event store
-- [ ] 5.1 HTTP transport
-- [ ] 5.2 Retry policy and backoff
-- [ ] 5.3 Remote configuration
+- [x] 2.1 Platform protocols and test fixtures
+- [x] 2.2 Logging infrastructure
+- [x] 2.3 Identifiers and time
+- [x] 2.4 JSON layer
+- [x] 2.5 Property validation and normalization
+- [x] 3.1 Configuration
+- [x] 3.2 Event model and public types
+- [x] 3.3 The `Analytics` protocol
+- [x] 4.1 Key-value stores
+- [x] 4.2 Event store
+- [x] 5.1 HTTP transport
+- [x] 5.2 Retry policy and backoff
+- [x] 5.3 Remote configuration
 - [ ] 6.1 Identity and super properties
 - [ ] 6.2 Session
 - [ ] 6.3a Event pipeline
@@ -762,6 +763,43 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-11 | 1.2 | Android rules not carried over | Rules that exist only because of the JVM or Android were dropped rather than translated: the freezing property delegate and its diagnostic (a struct snapshot cannot be written to, iOS Configuration 1); `@Volatile`, `synchronized(this)` and deep copies at boundaries (value types and `Sendable`); `java.time`, `compileOnly`, `animalsniffer`, OkHttp version rules, `consumer-rules.pro`, Robolectric conventions, the `ACCESS_NETWORK_STATE` fallback, the main-process check (replaced by the app-extension check), `@JvmOverloads` and `@JvmStatic` (replaced by the Objective-C wrapper's rules). Every other seed rule has a counterpart in one of the four files. | - |
 | 2026-10-11 | 1.2 | Line counts | Root 198 lines, `Rubicon` 154, `RubiconObjC` 44, `RubiconCore` 233: the core file is above the 200-line rule because iOS adds the locked-device state, the `URLSession` and `zlib` settings and the `cancelled` kind to the Android content. The user accepted it: the limit for that file is 250 lines, the others keep 200. | Root `CLAUDE.md` (Keeping these files honest) |
 | 2026-10-11 | 1.2 | First CI run (PR #1) | `check` 1 min 25 s, `simulator and consumer apps` 4 min 44 s on `macos-26` with Xcode 26.6; both lanes about 6 macOS minutes, about 60 plan minutes, for a pull request that touches the iOS side. The simulator suite, XcodeGen from Homebrew and the three consumer apps passed on the first run. `check-docs.sh --build` failed: `swift package dump-symbol-graph` on SwiftPM's native build system walks the test host module too and fails when it is not built; the scripts now run `swift build --build-tests` first and read the output directory from the command's own message (it is `.build/out/symbolgraph` under Xcode 27's build system and `.build/arm64-apple-macosx/symbolgraph` under 26.6). The three `CLAUDE.md` files in source targets are excluded in `Package.swift` so SwiftPM stops warning about unhandled files. | D6 (budget input), Scripts |
+| 2026-10-11 | 2.1 | Steps 2.1 to 5.3 in one pull request | The user asked for phases 2 to 5 on one branch (`feature/core-foundations`) and one pull request, one commit per step, committed without a review stop; questions are still asked when a decision is missing. The per-commit review returns from phase 6 on. | Working agreement 2 and 6, root `CLAUDE.md` |
+| 2026-10-11 | 2.1 | `RubiconTesting` visibility | The target is never a product, so its types are `package`, not `public`: a `public` type cannot expose `package` parameters, and nothing outside the package may see the fakes. | - |
+| 2026-10-11 | 2.1 | `ProcessFacts`, `LifecycleEvent`, listener tokens | The Android `ProcessInfo` is `ProcessFacts` (Foundation owns the name) with `osVersion`, `isAppExtension` (the iOS counterpart of `isMainProcess`) and `installedApp()` returning the two file dates of iOS Lifecycle 4. `LifecycleSource` reports a `LifecycleEvent` enum (`foreground`, `background`, `willTerminate`, `protectedDataWillBecomeUnavailable`, `protectedDataDidBecomeAvailable`) and `isProtectedDataAvailable`, so iOS Disk 1 and iOS Queue 2 need no second source. Listeners are `@Sendable` closures and `addListener` returns a token whose `cancel()` removes them; there is no `removeListener`. `NetworkMonitor.start()` takes no log: starting cannot fail on iOS. `TransportSettings` gains the instance's log in 2.2. | - |
+| 2026-10-11 | 2.1 | File sizes without `stat` | The core's `PosixFileSystem.fileSize` opens the file and uses `lseek(SEEK_END)`, which is not on Apple's required-reason list, so the core calls no listed API and the source-rules grep passes. Question for the user (asked in the step report): keep the `Rubicon` platform's startup size read on `attributesOfItem` under `C617.1` as iOS Disk 3 says, or use the same `lseek` path everywhere and leave `C617.1` to install detection alone (recommended). | iOS Disk 3 (if the user agrees) |
+| 2026-10-11 | 2.1 | `TestHTTPServer` | `NWListener` bound to `127.0.0.1` through `requiredLocalEndpoint`; the connection handler must be set before `start`, or the listener fails with `EINVAL`; every response carries `Connection: close` and the connection is closed after it. `URLSession` retries a GET whose connection dropped, so tests of the `io` kind use a POST. | - |
+| 2026-10-11 | 2.1 | Symbol graphs and re-exports | `Rubicon` re-exports the core, so its symbol graph repeats the core's public symbols, and synthesized members (`init(rawValue:)`) carry no source location. `api-diff.sh` and `check-docs.sh` keep only symbols whose location is under `Sources/<module>/`, so each record lists what its module declares and the docs check asks only for comments the author can write. `swift-format`'s one-line-summary rule is off: multi-sentence doc comments are the house style. | Scripts, `.swift-format` |
+| 2026-10-11 | 2.2 | Which codes the Swift `Code` enum holds | Only codes this SDK can produce: 42 of the Android 46, plus the iOS-only `SWIZZLE_FAILED` (iOS Lifecycle 1). `CONFIG_FROZEN`, `PROCESS_NAME_UNKNOWN`, `NETWORK_STATE_PERMISSION_MISSING`, `NETWORK_CALLBACK_FAILED` and `LIFECYCLE_UNAVAILABLE` are Android-only and stay in the catalogue with that mark, so the backend list is one list. `IssueCodesTests` checks both directions with the Platform column. The raw values are the wire names; the Swift cases are camelCase. | `docs/issue-codes.md` |
+| 2026-10-11 | 2.2 | The "threw" halves of Logging 4b in Swift | A `RubiconLogger` or observer closure cannot throw into the SDK, so `CallbackGuard` exposes `reportLoggerFailure(_:)` and `reportObserverFailure(_:)` for the Objective-C wrapper, which catches `NSException` around its blocks and reports; the guard then switches once and logs `LOGGER_THREW` or `OBSERVER_THREW` once. The re-entrancy half runs in Swift through `Thread.current.threadDictionary`. Catching `NSException` needs Objective-C source, and a SwiftPM target cannot mix Swift and Objective-C: step 7.7 will need a small C-family support target or a different catching mechanism; to be raised there. | iOS Logging 2 (as decided), step 7.7 note |
+| 2026-10-11 | 2.2 | Log call shape | `log.debug { }`, `log.warn(.code, error, repeatKey:) { }`: a trailing closure, not an autoclosure, so a message that costs something is visibly deferred and the source-rules scanner can treat the closure as part of the call (`check-source-rules.sh` now includes a trailing `{ }` block in the log-call scope). Messages of WARN and ERROR start with the code's raw value. | Root `CLAUDE.md` Code style (already in that form) |
+| 2026-10-11 | 2.2 | `Platform.logger` | Added as on Android: the platform's default sink (no-op in the core, `os.Logger` in `Rubicon`) and the fallback of a failed logger; `TransportSettings` carries the instance's `Log`. | - |
+| 2026-10-11 | 2.3 | ISO formatter: Foundation diverges before 1582 | The Android vectors caught it on the first run: `ISO8601DateFormatter` (and `Calendar(.gregorian)`) switch to the Julian calendar before 1582-10-15 and write `0001-01-03T00:00:00.000Z` for `0000-01-01`, so the fallback named on iOS Serialization 3 applies: `IsoDates` is the port of the Android calendar arithmetic (proleptic Gregorian, locale-free, thread-safe), not the Foundation formatter. The range rule and the vectors are unchanged; the random comparison against `Calendar` runs from 1583 on and the day arithmetic round-trips over the whole range. Approved by the user on 2026-10-12 and written into iOS Serialization decision 3 (version 2). | iOS Serialization 3 (version 2) |
+| 2026-10-11 | 2.3 | Random draws of the id generator | `RandomSource` has one method, `nextUInt64()`; the counter seed takes the low bits of one draw and the tail the low 32 bits of another, in the Android order (seed first, tail second). Kotlin's `Random` sequence is not reproduced; the Android tests are property tests and port unchanged, and `ScriptedRandom` gives known ids for an exact vector. | - |
+| 2026-10-11 | 2.3 | HTTP dates | `HttpDates.parse` is the Android parser over the same `daysFromCivil`, including the obsolete-form, day-name and leap-second rules of Android log 2.3; `Hashing.sha256Hex` uses `CryptoKit`. | - |
+| 2026-10-11 | 2.4 | `Json.write` on a non-finite double | Throws `JsonError.notFinite(path:)` naming the path, the Swift form of Android's `IllegalArgumentException`: the normalizer never produces one, so a throw there is a caller bug, and the serializer will treat it as such. | - |
+| 2026-10-11 | 2.4 | What `JSONSerialization` accepts and writes | Confirmed by the pinned tests on this Foundation: top-level fragments (`12`, `"text"`, `null`) and trailing content after an object are rejected without options, so the Android "trailing content is corrupt" rule needs no extra check; integers read back as `NSNumber` with an integral `objCType` and `50` written from `50.0` reads back as `.int(50)`; `1.5e-7` is written as `1.4999999999999999e-07`. `PropertyValue` is defined in this step, since the writer takes it; the normalizer that produces it is 2.5. | - |
+| 2026-10-11 | 2.5 | `developerError` in practice | `Log.developerError(_:)` calls an injected handler, `assertionFailure` by default: a debug build traps, a release build returns, and the caller then logs the problem exactly as with `debug` off, so nothing is ever silent (Android threw instead). Tests inject a recording handler through `TestPlatform.log()`, so the debug path is testable without ending the process. | iOS Configuration 2 (as decided) |
+| 2026-10-11 | 2.5 | What a "character" is in the limits | UTF-16 code units, as Kotlin's `length`: 255 for names and keys, 1024 for strings, truncation never inside a surrogate pair. Swift's `count` (grapheme clusters) would make the two SDKs cut the same string at different places. | Root `CLAUDE.md` Public API (limits) |
+| 2026-10-11 | 2.5 | Swift details found while porting | An `@objc` enum passed from Swift is a Swift value, not an `NSNumber`, and describes itself as `Type(rawValue: n)`; it is sent as its raw value, the outcome the page documents for the Objective-C path. `Float.nan` bridges to a double `NSNumber`, so its type is reported as `Double`. A Swift dictionary is unordered, so which properties survive the 256 limit is arbitrary, as with a `HashMap`. Depth 4 containers and self-referencing `NSMutableDictionary` or `NSMutableArray` values are dropped with `tooDeep`. | - |
+| 2026-10-12 | 3.1 | `beforeSend` and `logging.eventObserver` | Added in 3.2 with `BeforeSend`, `Event` and `EventObserver`, as on Android (log row 3.1); adding a `var` with a default to a struct is compatible. | Steps 3.1 and 3.2 |
+| 2026-10-12 | 3.1 | Host validation through `URLComponents` | `URL(string:)` accepts most of the Android reject list (iOS Configuration 3), so `Hosts.normalize` checks `URLComponents`: scheme `http` or `https` in any case, a non-empty host, no query, fragment, user or password, no surrounding whitespace, trailing slashes removed, the text otherwise kept as given (`HTTPS://` stays uppercase, as on Android). The snapshot carries the parsed `URL` next to the text. | - |
+| 2026-10-12 | 3.1 | Testing both `debug` defaults | `defaultDebug` is a `#if DEBUG` constant, so one test build sees one value; the nightly workflow gains `swift test -c release -Xswiftc -enable-testing`, which runs the whole suite with the release default and the optimizer on (also the closest the tests get to a Release build's `assertionFailure` being a no-op). | `nightly.yml` |
+| 2026-10-12 | 3.2 | Golden files and the two Android-only context fields | The golden files stay the Android ones verbatim (Serialization 5). iOS never writes `context.os.api_level` or `context.network.carrier` (iOS Context 1), so the test's structural comparison removes those two keys from the file before comparing, and nothing else; the sample events carry the file's other values (`Android`, `Pixel 8`, `rubicon-android`) as test data. | `SampleEvents.removingAndroidOnlyFields` |
+| 2026-10-12 | 3.2 | Where the hook-result rule lives | `HookRules.check(_:against:)` in the core, next to the types: `nil` only for app events, own kind (a foreign `Event` conformance is `otherKind`), fixed fields equal, automatic events keep name and top-level keys, names valid. The pipeline (6.3a) maps a violation to `before_send` and `HOOK_VIOLATION`. | Step 6.3a |
+| 2026-10-12 | 3.2 | `EventUpdate` is not `Equatable` | It carries `any Event`; tests compare its `description` or pattern-match. `TrackEvent`, `ScreenEvent`, `IdentifyEvent` and the context structs are `Equatable` for the tests and the hook rule. | - |
+| 2026-10-12 | 3.3 | Default arguments on a protocol | Swift protocol requirements take no defaults, so `track(_:)`, `screen(_:)`, `identify(_:)` and `trackDeepLink(_:)` are overloads in a protocol extension that forward to the requirements; a fake implements only the fourteen requirements. `register(_:value:)` takes `Any`, with `NSNull` for `null`, as iOS Public API 7 lists it. The two `trackDeepLink` methods are protocol requirements (iOS Lifecycle 3), so a fake must implement them too. | - |
+| 2026-10-12 | 4.1 | The locked state in the stores | `KeyValueRead` has `missing`, `unreadable`, `locked` and `present`; `KeyValueWrite` has `done`, `locked` and `failed`. A `StoreFile` met by `locked` on load stays unloaded with a DEBUG line (no WARN, no count, no temporary id) and `load()` returns `false` for the writer to call again on `protectedDataDidBecomeAvailable`; a locked write keeps the value dirty with a DEBUG line and no `STORAGE_WRITE_FAILED`. The stores' `state` is optional and `nil` until loaded. Decided by the user on 2026-10-12: before the first unlock `Analytics.deviceId` is `""` (the no-op value) and `isOptedOut` answers from `defaultConsent`, the real values once the writer loads; written into iOS Disk Persistence decision 1. | iOS Disk 1 (version 2); the getters in 6.7 |
+| 2026-10-12 | 4.1 | Shapes carried over, with iOS types | `device.json`, `person.json` and `remote-config.json` keep the Android keys and the Android rules for unreadable files (Android log 4.1); `last_failure` may be `cancelled` (iOS Retry 2). In memory the wall-clock fields are `Date` (iOS Event Model 2), written as epoch milliseconds; counters saturate at `Int32.max`, the Android `Int.MAX_VALUE`, so the two files agree. Files are created with mode `0600`; the backup exclusion is set on the first write of the root directory. | - |
+| 2026-10-12 | 4.2 | The event store needs no file metadata at all | The port keeps the Android rules (names carry the index, the writer counts what it wrote, a leftover `.tmp` is closed at startup after a byte scan), so neither a timestamp nor a size is ever read: the "one startup size read under `C617.1`" of iOS Disk 3 is unnecessary, and the `lseek` question of 2.1 is moot for the core. `C617.1` is then needed for install detection only (iOS Lifecycle 4). Approved by the user on 2026-10-12 and written into iOS Disk Persistence decision 3 and the iOS Privacy Controls manifest row (both version 2); the 2.1 question on `lseek` is closed with it. | iOS Disk 3, iOS Privacy 1 (version 2) |
+| 2026-10-12 | 4.2 | The locked device in the event store | `append` returns `.locked` on a permission error (nothing counted, nothing logged above DEBUG), `writeBatch` returns `.locked` (nothing read, deleted or counted), `closeOpenSegment` keeps the segment open, `open` returns `false` for the writer to call again, and `suspend()` syncs and closes the open segment's handle before the lock without closing the segment; the next `append` reopens the same `.tmp` with its counts intact. The uploader and writer act on these in 6.3b and 6.4. | iOS Disk 1 (as decided) |
+| 2026-10-12 | 4.2 | Bodies in memory | `writeBatch` returns the body as `Data` (at most 512 KB plus the envelope) instead of streaming into an output stream, since the transport compresses it in memory in one pass (iOS HTTP 2); a segment is read as bytes and split at line breaks, never held as a `String`. `PosixFileSystem.delete` removes an empty directory with `rmdir`, and `list` of a plain file is empty, as `File.listFiles()` was. | - |
+| 2026-10-12 | 5.3, PR #2 | The macOS deployment target of the host build | `Package.swift` declared only `.iOS(.v15)`, so the macOS build that `swift test` and the symbol-graph scripts use took the toolchain's default: macOS 14 on Xcode 27 locally, macOS 10.13 on Xcode 26.6 in CI, where CryptoKit's `SHA256` and `HTTPURLResponse.value(forHTTPHeaderField:)` (both 10.15) failed the `check` lane and the `check-docs.sh --build` step. `.macOS(.v12)` is now declared next to iOS: not a supported platform (iOS Public API 8 stands, nothing is tested or shipped for macOS), only the deployment target of the host build, chosen as the OS generation of iOS 15 so that the macOS build remains a faithful proxy for what the core may call and local and CI agree. | Package.swift; CI |
+| 2026-10-12 | PR #2 | The API record and closure parameter labels | The second CI run failed the `public API record` step: Xcode 27 spells the unlabeled parameter names of a closure typealias in the symbol graph (`@Sendable (_ level: LogLevel, ...)`), Xcode 26.6 does not. Such names are not callable API, so `api-diff.sh` drops the `_ name:` labels on `swift.typealias` lines before comparing, and `API/RubiconCore.txt` reads the same under both toolchains. Function parameter names stay in the record: both toolchains write them. | Scripts/api-diff.sh |
+| 2026-10-12 | 5.1 | What the transport tests cannot reach on macOS | A TLS handshake failure and an App Transport Security refusal need a TLS server with a bad certificate or an iOS app: `TestHTTPServer` speaks plain HTTP. The `URLError` to `FailureKind` table is tested as a pure function for every code, including the certificate codes and -1022; the live `tls` path is left to the consumer apps and the demo (8.1, 9.3). | Step 8.1 |
+| 2026-10-12 | 5.1 | Transport details | `Content-Length` is set on the request explicitly (URLSession sets it from the upload data as well); the completion wait is bounded by the resource timeout plus thirty seconds as a guard against a stuck stack; `cancelCurrent()` cancels the task in flight from any thread for the background expiration (iOS Queue 2); the delegate that refuses redirects is a separate object so the transport stays a plain `Sendable` class; `HostResolver` uses `getaddrinfo` and `getnameinfo` with `NI_NUMERICHOST`. | - |
+| 2026-10-12 | 5.2 | The one extra line of the retry `switch` | `RetryGroup.interrupted` for `FailureKind.cancelled` (iOS Retry 2): `onResult` clears any wait and records `last_failure = "cancelled"` with no step, no pause and no attempt counted; the next trigger tries at once. Everything else is the Android policy with the same table, jitter, poison-batch and clock-guard rules, over `RandomSource.nextDouble(in:)`. | - |
+| 2026-10-12 | 5.2 | Who logs `TLS_FAILED` on iOS | The transport (5.1), where the ATS case needs its own message; the policy logs the four upload codes only, so the code still fires once per process. On Android the policy logged it. | `docs/issue-codes.md` unchanged |
+| 2026-10-12 | 5.3 | Remote configuration on iOS | The Android contract and rules unchanged (`docs/remote-config.md` copied with the iOS User-Agent): `RemoteConfig.from` over `[String: PropertyValue]`, `RemoteConfigClient` with `startup()` and the once-per-launch `fetch()`, `Sampling` over the same salted SHA-256 buckets, `RuntimeFlags` as two atomic off-switches. `startup()` before the device store is loaded (a locked device) samples with an empty id; the core factory (6.7) calls it only after the stores load. | `docs/remote-config.md` |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release

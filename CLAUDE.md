@@ -185,11 +185,12 @@ A pull request that breaks one does not merge.
 ## Git and pull requests
 
 - `master` holds releases, `develop` the next one. One plan phase is one `feature/<topic>` branch
-  from `develop` and one pull request; each step in it is one commit, reviewed by the user before it
-  is made. Conventional Commits (`feat(queue): ...`, `build: ...`). Squash merge into `develop`.
+  from `develop` and one pull request (phases 2 to 5 share `feature/core-foundations`); each step
+  is one commit. Conventional Commits (`feat(queue): ...`, `build: ...`). Squash merge into `develop`.
 - Before committing: `Scripts/format.sh`, then `Scripts/check.sh` green.
-- Stop for review with the changes uncommitted; commit, push and open the pull request only after
-  the user approves. Never merge, never push to `develop` or `master`.
+- On `feature/core-foundations` a finished step is committed at once; on every later branch, stop
+  for review with the changes uncommitted. Push and open the pull request only after the user
+  approves. Never merge, never push to `develop` or `master`.
 - The description follows `.github/pull_request_template.md`.
 
 ## Keeping these files honest

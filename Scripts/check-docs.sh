@@ -20,6 +20,9 @@ for m in ("RubiconCore", "Rubicon", "RubiconObjC"):
     for s in g.get("symbols", []):
         if s.get("spi") or s.get("accessLevel") not in ("public", "open"):
             continue
+        # Re-exported and synthesized symbols carry another module's or no location: not ours to document.
+        if f"/Sources/{m}/" not in s.get("location", {}).get("uri", ""):
+            continue
         if not s.get("docComment", {}).get("lines"):
             loc = s.get("location", {})
             uri = loc.get("uri", "").replace("file://", "")
