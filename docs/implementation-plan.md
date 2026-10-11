@@ -662,7 +662,7 @@ without a test blocks the release.
 | iOS Public API 8 | Three targets, iOS only, SwiftPM, zero dependencies, API diff | 1.1 | `Package.swift` has no dependencies; `api-diff.sh` records the public symbols per module in `API/` and runs `diagnose-api-breaking-changes` once a tag exists; source rule `no-uikit-outside-rubicon` |
 | iOS Event Model 1 | Protocol with three structs | 3.2 | |
 | iOS Event Model 2 | `Date` in memory, epoch ms on the wire | 3.2, 2.4 | |
-| iOS Event Model 3 | Lowercase UUIDv7 port | 2.3 | |
+| iOS Event Model 3 | Lowercase UUIDv7 port | 2.3 | `UuidV7GeneratorTests` (version and variant, timestamp field, 10 000 in one millisecond, clock back, overflow, scripted draws give known ids, many threads, lowercase parsed by Foundation `UUID`) |
 | iOS Configuration 1 | Struct, no freezing | 3.1 | |
 | iOS Configuration 2 | `debug` default from the build flag; `developerError` | 3.1, 2.2 | |
 | iOS Configuration 3 | `host: String` validated | 3.1 | |
@@ -683,7 +683,7 @@ without a test blocks the release.
 | iOS Disk 3 | No timestamps, sizes in memory, one startup size read, no disk space API | 4.2, 7.8 | |
 | iOS Serialization 1 | `JSONSerialization` with `.sortedKeys`; the number text warning; structural golden | 2.4, 8.4 | |
 | iOS Serialization 2 | The Swift conversion table; the enum caveat | 2.5 | |
-| iOS Serialization 3 | `ISO8601DateFormatter`, range rule, Android vectors | 2.3 | |
+| iOS Serialization 3 | `ISO8601DateFormatter`, range rule, Android vectors | 2.3 | `IsoDatesTests` (the Android vectors incl. years 0000 and 9999, range rule, 100 000 instants against `Calendar` from 1583 on, day round trip over the range); see the 2026-10-11 log row on the Julian cutover |
 | iOS HTTP 1 | Ephemeral session, 20 s and 45 s, redirects refused, semaphore | 5.1 | |
 | iOS HTTP 2 | gzip through `zlib` | 5.1 | |
 | iOS HTTP 3 | `URLError` to `FailureKind`, `cancelled`, ATS as `tls`, blocked host, observer `error` values | 5.1, 7.6 | |
@@ -702,7 +702,7 @@ without a test blocks the release.
 - [x] 1.2 CLAUDE.md files
 - [x] 2.1 Platform protocols and test fixtures
 - [x] 2.2 Logging infrastructure
-- [ ] 2.3 Identifiers and time
+- [x] 2.3 Identifiers and time
 - [ ] 2.4 JSON layer
 - [ ] 2.5 Property validation and normalization
 - [ ] 3.1 Configuration
@@ -773,6 +773,9 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-11 | 2.2 | The "threw" halves of Logging 4b in Swift | A `RubiconLogger` or observer closure cannot throw into the SDK, so `CallbackGuard` exposes `reportLoggerFailure(_:)` and `reportObserverFailure(_:)` for the Objective-C wrapper, which catches `NSException` around its blocks and reports; the guard then switches once and logs `LOGGER_THREW` or `OBSERVER_THREW` once. The re-entrancy half runs in Swift through `Thread.current.threadDictionary`. Catching `NSException` needs Objective-C source, and a SwiftPM target cannot mix Swift and Objective-C: step 7.7 will need a small C-family support target or a different catching mechanism; to be raised there. | iOS Logging 2 (as decided), step 7.7 note |
 | 2026-10-11 | 2.2 | Log call shape | `log.debug { }`, `log.warn(.code, error, repeatKey:) { }`: a trailing closure, not an autoclosure, so a message that costs something is visibly deferred and the source-rules scanner can treat the closure as part of the call (`check-source-rules.sh` now includes a trailing `{ }` block in the log-call scope). Messages of WARN and ERROR start with the code's raw value. | Root `CLAUDE.md` Code style (already in that form) |
 | 2026-10-11 | 2.2 | `Platform.logger` | Added as on Android: the platform's default sink (no-op in the core, `os.Logger` in `Rubicon`) and the fallback of a failed logger; `TransportSettings` carries the instance's `Log`. | - |
+| 2026-10-11 | 2.3 | ISO formatter: Foundation diverges before 1582 | The Android vectors caught it on the first run: `ISO8601DateFormatter` (and `Calendar(.gregorian)`) switch to the Julian calendar before 1582-10-15 and write `0001-01-03T00:00:00.000Z` for `0000-01-01`, so the fallback named on iOS Serialization 3 applies: `IsoDates` is the port of the Android calendar arithmetic (proleptic Gregorian, locale-free, thread-safe), not the Foundation formatter. The range rule and the vectors are unchanged; the random comparison against `Calendar` runs from 1583 on and the day arithmetic round-trips over the whole range. The iOS Serialization page's decision 3 should say so; asked of the user in the step report. | iOS Serialization 3 (page edit pending the user) |
+| 2026-10-11 | 2.3 | Random draws of the id generator | `RandomSource` has one method, `nextUInt64()`; the counter seed takes the low bits of one draw and the tail the low 32 bits of another, in the Android order (seed first, tail second). Kotlin's `Random` sequence is not reproduced; the Android tests are property tests and port unchanged, and `ScriptedRandom` gives known ids for an exact vector. | - |
+| 2026-10-11 | 2.3 | HTTP dates | `HttpDates.parse` is the Android parser over the same `daysFromCivil`, including the obsolete-form, day-name and leap-second rules of Android log 2.3; `Hashing.sha256Hex` uses `CryptoKit`. | - |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release
