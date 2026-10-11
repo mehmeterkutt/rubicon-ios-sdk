@@ -69,7 +69,8 @@ public types at the top level of the target.
 - `device_id`: UUIDv7 created on first launch. `user_id`: set by `identify`, `nil` = anonymous. No
   identified flag, no alias ever, no group (Identity 1, 6). Missing file: generate and write.
   Unreadable (corrupt, newer `v`): temporary in-memory id, never overwrite, WARN. Locked (iOS Disk 1):
-  neither; wait for protected data.
+  neither; wait for protected data. Before the stores could load, `deviceId` is `""` and
+  `isOptedOut` answers from `defaultConsent` (iOS Disk 1).
 - `identify(_ userId:traits:)` (Identity 3, 4): anonymous -> set and persist, send `IdentifyEvent`;
   same id with traits -> `IdentifyEvent` only; same id without -> nothing; a different id while
   identified -> clear `PersonStore`, then identify, INFO without ids. Blank or over 255 characters ->
@@ -155,9 +156,9 @@ public types at the top level of the target.
   when a segment closes (before rename), on backgrounding, on every store write and before the
   device locks. Never per event (iOS Disk 2). A `.tmp` at startup: keep complete lines, drop a half
   last line (`corrupt`), close it (Disk 4).
-- No timestamps for ordering or counting; sizes tracked in memory, read once at startup with
-  `attributesOfItem(atPath:)[.size]` from `Rubicon`'s file system (reason `C617.1`); no disk space
-  API; a full disk is a failed write (iOS Disk 3).
+- No timestamps, sizes or any other file metadata are ever read: the index is in the name, the
+  writer counts what it wrote, a leftover `.tmp` is read in full and closed at startup; no disk
+  space API; a full disk is a failed write (iOS Disk 3).
 - Bad lines are skipped (`corrupt`), never logged (ERROR with segment, line number, `message_id`).
   Unreadable segment: retried, deleted after 3 consecutive failures (`UNREADABLE_SEGMENT`). Unknown
   files: deleted with WARN. No quarantine (Disk 5).

@@ -17,8 +17,8 @@ collection, the network monitor, the HTTP transport's `URLSession`, `RubiconNetw
   `Application Support/rubicon/` with `isExcludedFromBackup`, never in `UserDefaults`, the Keychain
   or a backed-up directory; `identifierForVendor` is never read (iOS Identity 1).
 - Required-reason APIs (iOS Privacy 1) are called only under `Platform/` and only for the two
-  declared categories: `ProcessInfo.systemUptime` (`35F9.1`) and the file dates and sizes of
-  install detection and the startup size read (`C617.1`). `check-required-reason-apis.sh` enforces
+  declared categories: `ProcessInfo.systemUptime` (`35F9.1`) and the two creation dates of install
+  detection (`C617.1`); the stores read no file metadata at all. `check-required-reason-apis.sh` enforces
   the location; `PrivacyInfo.xcprivacy` and the iOS Privacy page change before a third category
   appears.
 
