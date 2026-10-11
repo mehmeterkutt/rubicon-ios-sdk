@@ -712,7 +712,7 @@ without a test blocks the release.
 - [x] 4.2 Event store
 - [x] 5.1 HTTP transport
 - [x] 5.2 Retry policy and backoff
-- [ ] 5.3 Remote configuration
+- [x] 5.3 Remote configuration
 - [ ] 6.1 Identity and super properties
 - [ ] 6.2 Session
 - [ ] 6.3a Event pipeline
@@ -797,6 +797,7 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-12 | 5.1 | Transport details | `Content-Length` is set on the request explicitly (URLSession sets it from the upload data as well); the completion wait is bounded by the resource timeout plus thirty seconds as a guard against a stuck stack; `cancelCurrent()` cancels the task in flight from any thread for the background expiration (iOS Queue 2); the delegate that refuses redirects is a separate object so the transport stays a plain `Sendable` class; `HostResolver` uses `getaddrinfo` and `getnameinfo` with `NI_NUMERICHOST`. | - |
 | 2026-10-12 | 5.2 | The one extra line of the retry `switch` | `RetryGroup.interrupted` for `FailureKind.cancelled` (iOS Retry 2): `onResult` clears any wait and records `last_failure = "cancelled"` with no step, no pause and no attempt counted; the next trigger tries at once. Everything else is the Android policy with the same table, jitter, poison-batch and clock-guard rules, over `RandomSource.nextDouble(in:)`. | - |
 | 2026-10-12 | 5.2 | Who logs `TLS_FAILED` on iOS | The transport (5.1), where the ATS case needs its own message; the policy logs the four upload codes only, so the code still fires once per process. On Android the policy logged it. | `docs/issue-codes.md` unchanged |
+| 2026-10-12 | 5.3 | Remote configuration on iOS | The Android contract and rules unchanged (`docs/remote-config.md` copied with the iOS User-Agent): `RemoteConfig.from` over `[String: PropertyValue]`, `RemoteConfigClient` with `startup()` and the once-per-launch `fetch()`, `Sampling` over the same salted SHA-256 buckets, `RuntimeFlags` as two atomic off-switches. `startup()` before the device store is loaded (a locked device) samples with an empty id; the core factory (6.7) calls it only after the stores load. | `docs/remote-config.md` |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release
