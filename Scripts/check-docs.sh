@@ -5,9 +5,12 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-swift package dump-symbol-graph --minimum-access-level public --skip-synthesized-members > /dev/null
-dir=.build/out/symbolgraph
-[ -d "$dir" ] || dir=$(find .build -type d -name symbolgraph | head -1)
+# dump-symbol-graph walks every module, test hosts included, so they must be built first; the
+# output directory differs between SwiftPM's build systems, so it is read from the command's output.
+swift build --build-tests > /dev/null
+dir=$(swift package dump-symbol-graph --minimum-access-level public --skip-synthesized-members 2>&1 \
+    | sed -n 's/^Files written to //p' | tail -1)
+[ -n "$dir" ] && [ -d "$dir" ] || { echo "symbol graph: no output directory" >&2; exit 1; }
 
 python3 - "$dir" <<'PY'
 import json, sys, os

@@ -1,7 +1,7 @@
 # Rubicon iOS SDK
 
-Analytics SDK for iOS in Swift. This file and each target's `CLAUDE.md` (written in step 1.2) are the
-contract for how code is written here; read them before changing anything.
+Analytics SDK for iOS in Swift. This file and each target's `CLAUDE.md` are the contract for how code
+is written here; read them before changing anything.
 
 - The design is decided in Confluence (space SD; Atlassian MCP, `cloudId` `rubiconn.atlassian.net`)
   and is binding. The iOS entry page is "Analytics SDK: iOS" (id 8192025) with fourteen `iOS: <block>`
@@ -13,22 +13,24 @@ contract for how code is written here; read them before changing anything.
   of every session and take the first unchecked step.
 - Never decide something the decisions do not cover: stop and ask, with options and a recommendation.
 - The Android SDK (`~/Projects/rubicon-android-sdk`) is the reference implementation of the same
-  contract: its `sdk-core/CLAUDE.md` rules, golden wire files (`sdk-core/src/test/resources/golden/`),
-  `docs/issue-codes.md` and implementation decisions log apply here unless an iOS page says otherwise.
-  Where Android code and an iOS decision disagree, the iOS decision wins.
+  contract: port its code, its golden wire files (`Tests/RubiconCoreTests/Fixtures/golden`, copied
+  verbatim), `docs/issue-codes.md` and its implementation decisions log, unless an iOS page says
+  otherwise. Where Android code and an iOS decision disagree, the iOS decision wins.
 
 ## Targets
 
 | Target | Role |
 |---|---|
-| `RubiconCore` | Foundation only, no UIKit: configuration, pipeline, queue, storage, identity, sessions, upload, HTTP, retry. Tested with `swift test` on macOS. |
-| `Rubicon` | iOS: the factory `RubiconAnalytics.make`, platform implementations, UIKit lifecycle, screens, deep links, `RubiconNetworkObserver`, the privacy manifest. Tested on the simulator. |
-| `RubiconObjC` | The Objective-C wrapper (`RBN` prefix), a separate product depending on `Rubicon`. |
-| `RubiconTesting` | Test support shared by the test targets: `TestPlatform` fakes, the virtual-time scheduler, the test HTTP server. Never a product. |
+| `RubiconCore` | Foundation only: configuration, pipeline, queue, storage, identity, sessions, HTTP, retry, logging. `swift test` on macOS. Rules: `Sources/RubiconCore/CLAUDE.md` |
+| `Rubicon` | iOS: factory, platform implementations, lifecycle, screens, deep links, context, `RubiconNetworkObserver`, the `os.Logger` sink, the privacy manifest; re-exports the core. Simulator tests. Rules: `Sources/Rubicon/CLAUDE.md` |
+| `RubiconObjC` | The Objective-C wrapper (`RBN` prefix), a separate product depending on `Rubicon`. Rules: `Sources/RubiconObjC/CLAUDE.md` |
+| `RubiconTesting` | Test support for the test targets: `TestPlatform` fakes, the virtual-time scheduler, `TestHTTPServer`. Never a product. |
+| `ConsumerApps/*` | Never shipped: a Swift 5 app, a Swift 6 app and an Objective-C app that build against the package in CI (iOS Public API 3). |
 
-Rules per target are written in step 1.2 (`Sources/<Target>/CLAUDE.md`). Until then the Android
-`sdk-core/CLAUDE.md` and `sdk-android/CLAUDE.md` are read for the rules, with the iOS pages for the
-differences.
+Apps add one product, `Rubicon`, which brings `RubiconCore`; Objective-C apps add `RubiconObjC` as
+well (iOS Public API 8). UIKit code lives only in `Rubicon`; when the core needs the platform (clock,
+files, network, lifecycle, context) it declares a protocol that `Rubicon` implements. The demo app and
+its fake backend are a separate repository (`rubicon-team/rubicon-ios-demo`).
 
 ## Commands
 
@@ -52,11 +54,133 @@ fails there is fixed, not waved through. Keep the sources inside `swift-tools-ve
 
 ## Non-negotiables
 
-Inherited from the Android root `CLAUDE.md` unchanged: never crash the host app, public API is
-forever, everything internal unless it must be public, no new dependencies, documentation on every
-public symbol, a diff that defines a public API change. iOS additions: no `print`; no `#available`
-checks (iOS 15 is the floor, iOS Public API 2); no required-reason API outside the two declared
-categories (iOS Privacy 1); no UIKit import outside `Rubicon`; Swift 6 language mode in every target.
+A pull request that breaks one does not merge.
+
+1. **Never crash the host app.** No force unwrap, `try!`, `fatalError` or `precondition` in SDK code;
+   every public entry point and every queue closure handles its errors, logs and degrades: the SDK
+   failing is an analytics gap, not an app crash. The only traps on purpose go through the internal
+   `developerError(_:)`, which calls `assertionFailure` when `configuration.debug` is on (invalid
+   configuration, unsupported property type, hook violation, second instance); with `debug` off they
+   log instead (iOS Configuration 2).
+2. **No events lost silently.** An event is written to disk before `track` returns control to the
+   pipeline; upload happens later, with retry and backoff. Offline and a locked device are normal
+   states, not errors.
+3. **Public API is forever.** Nothing public is removed or renamed. Deprecate with
+   `@available(*, deprecated, renamed:)` and keep it working for at least one major version.
+4. **Everything is `internal` unless it must be public.** Public surface: the factory, the `Analytics`
+   protocol, the configuration, the event types and the hook types. Cross-target use inside the
+   package is `package`, never `public` (D-log 2026-10-11).
+5. **Application scope only.** Never retain a `UIViewController`, `UIView`, `UIWindow` or scene;
+   observers that need one use a weak reference. `UIApplication.shared` only in `Rubicon`, only on
+   the main thread, never in an app extension.
+6. **No dependencies.** `Package.swift` declares none; Apple frameworks (`Foundation`, `zlib`,
+   `CryptoKit`, `Network`, `os`, `UIKit`) are not dependencies. Adding a package is a design
+   discussion, not a pull request detail.
+7. **Every change ships with tests.** No exceptions for small fixes.
+
+## Public API
+
+- The developer creates and holds the instance: `RubiconAnalytics.make(configuration:)` on a caseless
+  enum in `Rubicon` returns `any Analytics`, the protocol of the core. No singleton, no global
+  accessor; one instance per process, enforced by the factory; the implementation is internal
+  (iOS Public API 4).
+- Fixed vocabulary, first argument unlabeled: `track(_:properties:)`, `screen(_:properties:)`,
+  `identify(_:traits:)`, `reset()`, `register(_:value:)`, `unregister(_:)`, `flush()`, `optOut()`,
+  `optIn()`, `clearLocalData()`, read-only `isOptedOut` and `deviceId` properties, no `userId` getter;
+  plus the iOS-only `trackDeepLink(_:referrer:)` and `trackDeepLink(_:)` (iOS Public API 7, iOS
+  Lifecycle 3). Methods return nothing: no chaining, no event ids. No `async`, no `Task` in the API.
+- Properties are `[String: Any]` at the door, defaulting to `[:]`, validated in one pass on the
+  calling thread into `[String: PropertyValue]`, a `Sendable` enum (`string`, `int(Int64)`, `double`,
+  `bool`, `null`, `array`, `object`); the caller's dictionary is never kept. Validated again after
+  the `beforeSend` chain (iOS Public API 5).
+- A boolean is told from a number before any other check with `CFGetTypeID(value as CFTypeRef) ==
+  CFBooleanGetTypeID()`; the Swift cast chain misreads `NSNumber` (iOS Public API 5).
+- Conversion table (iOS Serialization 2): `NSNull` and empty optionals are `null`; integers of any
+  width become `Int64` (`UInt64` above `Int64.max` rejected); `Double` and `CGFloat` as is (NaN and
+  infinity rejected); `Float` and `Decimal` through their decimal text; `Character` as a string;
+  `Date` as `yyyy-MM-dd'T'HH:mm:ss.SSS'Z'`; `URL` as `absoluteString`; a payload-free enum as its
+  case name; arrays and sets as lists (a bad element drops only itself); string-keyed dictionaries
+  as objects. Everything else is rejected: drop the key, WARN with key and type only, never the
+  value; keep the event; `developerError` in debug.
+- Limits (Serialization 3): event line 32 KB (drop, `oversize`); event or screen name and key 1 to
+  255 characters (drop, never trim); string values 1024 characters (truncate on a character
+  boundary, no marker, WARN); 256 properties with super properties (those dropped first); nesting
+  depth 3.
+- `AnalyticsConfiguration.beforeSend: [BeforeSend]` with `typealias BeforeSend = @Sendable (any Event)
+  -> (any Event)?`, fixed at creation, runs on the calling thread. `nil` drops. A result is accepted
+  only if it is a `TrackEvent`, `ScreenEvent` or `IdentifyEvent` of the input's kind with the
+  input's fixed fields; `source == .app`: any name and data; `source == .auto`: same name, same
+  top-level keys, values free, no `nil`. A breach drops (`before_send`, `HOOK_VIOLATION`),
+  `developerError` in debug. `SDK Diagnostics` never reaches hooks (iOS Public API 6, Event Model 1).
+- `Event` is a `Sendable` protocol with three structs; fixed fields are `let`, `name` and
+  `properties` or `traits` are `var`; initializers are internal. Third-party conformances are
+  harmless because the pipeline checks the kind (iOS Event Model 1).
+- `AnalyticsConfiguration` is a `Sendable` struct: `let apiKey`, `var` settings with defaults, nested
+  structs per group; the factory keeps its copy as the snapshot, nothing is frozen. Never add
+  initializer parameters; optional settings only for the hooks and the logger (iOS Configuration 1).
+- Public types are `Sendable`; protocols evolve by adding requirements with default implementations
+  in an extension; enums that may grow are not `@frozen` and their documentation asks for `default`.
+- Documentation comment on every public symbol (`check-docs.sh`), with a short example when it
+  prevents misuse.
+- The public API record is `API/<module>.txt`, written by `Scripts/api-diff.sh --update` from the
+  symbol graph; a diff there is the definition of a public API change and is named at the top of
+  the pull request. `diagnose-api-breaking-changes` runs against the last release tag.
+
+## Dependencies
+
+- None at runtime (iOS Public API 8). Frameworks by target: the core imports `Foundation`, `zlib`
+  and `CryptoKit` only; `Rubicon` adds `UIKit` (guarded with `#if canImport(UIKit)`), `Network` and
+  `os`; `RubiconObjC` imports `Rubicon` and `Foundation`.
+- Uploads use the SDK's own `URLSession` behind the internal `HttpTransport`; never
+  `URLSession.shared`, never the app's session (iOS HTTP 1).
+- No `#available` or `@available(iOS ...)` checks: every API used exists on iOS 15 (iOS Public API 2).
+  No `swift-docc-plugin`, no SwiftLint: tools come from the toolchain or Homebrew on the runner.
+- Test-only and tool-only additions are allowed but named in the pull request (so far: XcodeGen).
+
+## Threading
+
+- Every public method is thread-safe and non-blocking. The calling thread only copies arguments,
+  validates properties and snapshots identity and super properties; disk and network work is
+  enqueued. Calls from the same thread take effect in call order (Public API 9).
+- Two serial `DispatchQueue`s, writer and uploader, own all state below the public surface; each
+  worker is `final class ...: @unchecked Sendable` with a comment on the line above naming the queue
+  that guards it and `dispatchPrecondition(condition: .onQueue(queue))` in debug (iOS Queue 1).
+- Other shared state is behind an `NSLock` (`OSAllocatedUnfairLock` needs iOS 16), never `objc_sync`
+  on `self`.
+  Closures handed to a queue are `@Sendable`. No `DispatchQueue.main` in the core; `Rubicon` touches
+  the main queue only for UIKit (source rules).
+- Events and configurations are value types, so boundaries need no deep copies; a reference type
+  that crosses a queue is `Sendable` or copied first.
+
+## Testing
+
+- Layers, tools and the rules for every test: section 5 of the plan.
+- Swift Testing everywhere (`@Suite`, `@Test("sentence")`, `#expect`, `#require`, parameterized
+  tests); XCTest only in the Objective-C test target and the consumer apps' UI tests. Fakes come
+  from `RubiconTesting`, never a mocking library.
+- The core runs on macOS with `swift test` in seconds; `Rubicon` tests run on the simulator through
+  `Scripts/test-simulator.sh`; the consumer apps and the demo app cover what the simulator cannot.
+- No `sleep` and no real waiting in unit tests: time is virtual through the injected `Scheduler`.
+  Every file test uses its own temporary directory; suites run in parallel, nothing is global.
+- Coverage gates (`check-coverage.sh`): 90 percent of lines in `RubiconCore`, 80 percent in `Rubicon`.
+- Anything touching upload, storage or identity gets one manual run in the demo app against its fake
+  server, once the demo app uses the SDK (step 9.2).
+
+## Code style
+
+- `swift format` with the repository configuration (`Scripts/format.sh`): 4 spaces, 120 columns,
+  grouped imports. Readability over cleverness: small functions, one responsibility.
+- `struct` for public value types, `protocol` for abstractions, `enum` for fixed sets and for
+  namespaces; `final class` only where identity or a lock is the point. No `open` classes.
+- Constants are `static let` on the type that owns them or `private let` at file scope.
+- Log only through the internal logger (`log.debug { }`, `log.warn(.code) { }`,
+  `log.error(.code, error) { }`), never `print`, `debugPrint`, `NSLog` or `os_log` outside the one
+  sink in `Rubicon` (iOS Logging 1; source rule `no-print`).
+- Never log property or trait values, `userId`, `deviceId`, the session id, the API key, header
+  values, bodies or query strings, at any level; names, keys, types, counts, codes and `message_id`
+  are fine (Logging 4). On iOS the message is logged `privacy: .public`, so this rule is what keeps
+  device logs clean; the source rule rejects those identifiers inside a log call.
+- Documents and code comments are in English, without emoji.
 
 ## Git and pull requests
 
@@ -67,3 +191,10 @@ categories (iOS Privacy 1); no UIKit import outside `Rubicon`; Swift 6 language 
 - Stop for review with the changes uncommitted; commit, push and open the pull request only after
   the user approves. Never merge, never push to `develop` or `master`.
 - The description follows `.github/pull_request_template.md`.
+
+## Keeping these files honest
+
+They are loaded into every AI session and read by every contributor. When a rule stops matching the
+code, fix one or the other in the same pull request. State each rule once; target detail goes into
+the target's `CLAUDE.md`. Each file stays under 200 lines, `Sources/RubiconCore/CLAUDE.md` under 250;
+this one near 200.

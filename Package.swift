@@ -20,20 +20,23 @@ let package = Package(
         // Foundation only: no UIKit, no os.Logger, no Network (iOS Public API 8).
         .target(
             name: "RubiconCore",
-            path: "Sources/RubiconCore"
+            path: "Sources/RubiconCore",
+            exclude: ["CLAUDE.md"]
         ),
         // iOS: factory, platform implementations, lifecycle, the privacy manifest (iOS Privacy 1).
         .target(
             name: "Rubicon",
             dependencies: ["RubiconCore"],
             path: "Sources/Rubicon",
+            exclude: ["CLAUDE.md"],
             resources: [.process("PrivacyInfo.xcprivacy")]
         ),
         // The Objective-C wrapper: Swift files with @objc classes, RBN prefix.
         .target(
             name: "RubiconObjC",
             dependencies: ["Rubicon"],
-            path: "Sources/RubiconObjC"
+            path: "Sources/RubiconObjC",
+            exclude: ["CLAUDE.md"]
         ),
         // Shared test support; never a product.
         .target(
