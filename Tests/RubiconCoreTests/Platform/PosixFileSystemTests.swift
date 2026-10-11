@@ -70,6 +70,15 @@ struct PosixFileSystemTests {
         #expect(!fs.exists(file))
     }
 
+    @Test("delete removes an empty directory too, and a missing one is fine")
+    func deleteDirectory() throws {
+        let sub = dir.appendingPathComponent("sub", isDirectory: true)
+        try fs.createDirectory(sub)
+        try fs.delete(sub)
+        #expect(!fs.exists(sub))
+        try fs.delete(sub)
+    }
+
     @Test("excludeFromBackup sets the resource value on the directory")
     func backupExclusion() throws {
         let sub = dir.appendingPathComponent("rubicon", isDirectory: true)
@@ -108,13 +117,13 @@ struct PosixFileSystemFailureTests {
         #expect(throws: FileSystemError.notFound) { try fs.excludeFromBackup(missing) }
     }
 
-    @Test("a file where a directory is expected is an I/O error, not notFound")
+    @Test("a file where a directory is expected lists nothing and cannot hold children")
     func notADirectory() throws {
         let file = dir.appendingPathComponent("file")
         let sink = try fs.openWrite(file)
         sink.close()
 
-        #expect(throws: FileSystemError.io(code: ENOTDIR, operation: "opendir")) { try fs.list(file) }
+        #expect(try fs.list(file).isEmpty)
         #expect(throws: FileSystemError.self) { try fs.createDirectory(file.appendingPathComponent("sub")) }
     }
 

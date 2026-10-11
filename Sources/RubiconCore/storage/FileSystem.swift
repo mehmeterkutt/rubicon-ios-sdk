@@ -72,7 +72,8 @@ package final class PosixFileSystem: FileSystem {
 
     package func list(_ directory: URL) throws(FileSystemError) -> [URL] {
         guard let dir = opendir(directory.path) else {
-            if errno == ENOENT { return [] }
+            // A missing directory, or a file where a directory was expected, has no entries.
+            if errno == ENOENT || errno == ENOTDIR { return [] }
             throw Self.error(errno, "opendir")
         }
         defer { closedir(dir) }
@@ -150,7 +151,14 @@ package final class PosixFileSystem: FileSystem {
     }
 
     package func delete(_ url: URL) throws(FileSystemError) {
-        if unlink(url.path) != 0 && errno != ENOENT { throw Self.error(errno, "unlink") }
+        if unlink(url.path) == 0 || errno == ENOENT { return }
+        let unlinkError = errno
+        // A directory: `unlink` refuses it with EPERM or EISDIR; `rmdir` removes an empty one.
+        if unlinkError == EPERM || unlinkError == EISDIR {
+            if rmdir(url.path) == 0 || errno == ENOENT { return }
+            if errno != ENOTDIR { throw Self.error(errno, "rmdir") }
+        }
+        throw Self.error(unlinkError, "unlink")
     }
 
     // MARK: - Helpers
