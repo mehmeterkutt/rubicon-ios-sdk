@@ -23,6 +23,7 @@ package final class TestPlatform: Sendable {
     package let contextProvider: FakeContextProvider
     package let processFacts: FakeProcessFacts
     package let lifecycleSource: FakeLifecycleSource
+    package let logger: RecordingLogger
     package let storageRoot: URL
     package let fileSystem: FakeFileSystem
     package let platform: Platform
@@ -37,6 +38,7 @@ package final class TestPlatform: Sendable {
         contextProvider: FakeContextProvider = FakeContextProvider(),
         processFacts: FakeProcessFacts = FakeProcessFacts(),
         lifecycleSource: FakeLifecycleSource = FakeLifecycleSource(),
+        logger: RecordingLogger = RecordingLogger(),
         storageRoot: URL? = nil,
         fileSystem: FakeFileSystem = FakeFileSystem()
     ) {
@@ -49,13 +51,20 @@ package final class TestPlatform: Sendable {
         self.contextProvider = contextProvider
         self.processFacts = processFacts
         self.lifecycleSource = lifecycleSource
+        self.logger = logger
         self.storageRoot = storageRoot ?? TestPlatform.temporaryDirectory()
         self.fileSystem = fileSystem
         platform = Platform(
             clock: clock, elapsedClock: elapsedClock, random: random, scheduler: scheduler,
             networkMonitor: networkMonitor, transportFactory: { _, _ in transport },
             contextProvider: contextProvider, processFacts: processFacts, lifecycleSource: lifecycleSource,
-            storageRoot: self.storageRoot, fileSystem: fileSystem)
+            logger: logger.asLogger, storageRoot: self.storageRoot, fileSystem: fileSystem)
+    }
+
+    /// A `Log` at `level` that writes to this platform's recording logger, for components that take
+    /// one directly.
+    package func log(level: LogLevel = .debug, logger: RubiconLogger? = nil) -> Log {
+        Log(level: level, logger: logger, platformLogger: self.logger.asLogger)
     }
 
     /// A fresh, empty directory under the system temporary directory.

@@ -170,7 +170,7 @@ struct FakeEnvironmentTests {
         #expect(platform.contextProvider as AnyObject === test.contextProvider)
         #expect(platform.processFacts as AnyObject === test.processFacts)
         #expect(platform.fileSystem as AnyObject === test.fileSystem)
-        let transport = platform.transportFactory(TransportSettings(apiKey: "k"), platform)
+        let transport = platform.transportFactory(TransportSettings(apiKey: "k", log: test.log()), platform)
         #expect(transport as AnyObject === test.transport)
         #expect(platform.storageRoot == test.storageRoot)
         #expect(FileManager.default.fileExists(atPath: test.storageRoot.path))

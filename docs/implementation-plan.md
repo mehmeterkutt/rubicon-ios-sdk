@@ -691,8 +691,8 @@ without a test blocks the release.
 | iOS Retry 1 | `NWPathMonitor`, `.requiresConnection` connected, optimistic start | 7.2 | `FakeSignalsTests` (listener tokens, only changes heard); the real monitor in 7.2 |
 | iOS Retry 2 | `systemUptime` for waits; `cancelled` as waiting | 5.2 | |
 | iOS Privacy 1 | The manifest; the label table; the required-reason grep | 1.1, 7.8, 8.5 | `PrivacyInfo.xcprivacy` declared as a resource; `check-required-reason-apis.sh` |
-| iOS Logging 1 | Closure logger, `os.Logger` sink, level mapping, `privacy: .public`, no `print` | 2.2, 7.1 | |
-| iOS Logging 2 | `EventObserver` enum, `RBNEventUpdate`, `threadDictionary` guard, trap rule | 2.2, 3.2, 7.7 | |
+| iOS Logging 1 | Closure logger, `os.Logger` sink, level mapping, `privacy: .public`, no `print` | 2.2, 7.1 | `LogTests` (closure logger, level gating, repeat limit, `repeatKey`, no-op default); the `os.Logger` sink in 7.1 |
+| iOS Logging 2 | `EventObserver` enum, `RBNEventUpdate`, `threadDictionary` guard, trap rule | 2.2, 3.2, 7.7 | `LogTests` (thread-dictionary re-entrancy guard, other threads unaffected, failure reports switch once); `EventUpdate` in 3.2, the wrapper in 7.7 |
 | Android decisions, all pages | Inherited unchanged | the ported tests of every step | |
 
 ## 14. Status
@@ -701,7 +701,7 @@ without a test blocks the release.
 - [x] 1.1 Scaffold
 - [x] 1.2 CLAUDE.md files
 - [x] 2.1 Platform protocols and test fixtures
-- [ ] 2.2 Logging infrastructure
+- [x] 2.2 Logging infrastructure
 - [ ] 2.3 Identifiers and time
 - [ ] 2.4 JSON layer
 - [ ] 2.5 Property validation and normalization
@@ -769,6 +769,10 @@ both SDKs are mirrored into the Android plan's log after the user agrees.
 | 2026-10-11 | 2.1 | File sizes without `stat` | The core's `PosixFileSystem.fileSize` opens the file and uses `lseek(SEEK_END)`, which is not on Apple's required-reason list, so the core calls no listed API and the source-rules grep passes. Question for the user (asked in the step report): keep the `Rubicon` platform's startup size read on `attributesOfItem` under `C617.1` as iOS Disk 3 says, or use the same `lseek` path everywhere and leave `C617.1` to install detection alone (recommended). | iOS Disk 3 (if the user agrees) |
 | 2026-10-11 | 2.1 | `TestHTTPServer` | `NWListener` bound to `127.0.0.1` through `requiredLocalEndpoint`; the connection handler must be set before `start`, or the listener fails with `EINVAL`; every response carries `Connection: close` and the connection is closed after it. `URLSession` retries a GET whose connection dropped, so tests of the `io` kind use a POST. | - |
 | 2026-10-11 | 2.1 | Symbol graphs and re-exports | `Rubicon` re-exports the core, so its symbol graph repeats the core's public symbols, and synthesized members (`init(rawValue:)`) carry no source location. `api-diff.sh` and `check-docs.sh` keep only symbols whose location is under `Sources/<module>/`, so each record lists what its module declares and the docs check asks only for comments the author can write. `swift-format`'s one-line-summary rule is off: multi-sentence doc comments are the house style. | Scripts, `.swift-format` |
+| 2026-10-11 | 2.2 | Which codes the Swift `Code` enum holds | Only codes this SDK can produce: 42 of the Android 46, plus the iOS-only `SWIZZLE_FAILED` (iOS Lifecycle 1). `CONFIG_FROZEN`, `PROCESS_NAME_UNKNOWN`, `NETWORK_STATE_PERMISSION_MISSING`, `NETWORK_CALLBACK_FAILED` and `LIFECYCLE_UNAVAILABLE` are Android-only and stay in the catalogue with that mark, so the backend list is one list. `IssueCodesTests` checks both directions with the Platform column. The raw values are the wire names; the Swift cases are camelCase. | `docs/issue-codes.md` |
+| 2026-10-11 | 2.2 | The "threw" halves of Logging 4b in Swift | A `RubiconLogger` or observer closure cannot throw into the SDK, so `CallbackGuard` exposes `reportLoggerFailure(_:)` and `reportObserverFailure(_:)` for the Objective-C wrapper, which catches `NSException` around its blocks and reports; the guard then switches once and logs `LOGGER_THREW` or `OBSERVER_THREW` once. The re-entrancy half runs in Swift through `Thread.current.threadDictionary`. Catching `NSException` needs Objective-C source, and a SwiftPM target cannot mix Swift and Objective-C: step 7.7 will need a small C-family support target or a different catching mechanism; to be raised there. | iOS Logging 2 (as decided), step 7.7 note |
+| 2026-10-11 | 2.2 | Log call shape | `log.debug { }`, `log.warn(.code, error, repeatKey:) { }`: a trailing closure, not an autoclosure, so a message that costs something is visibly deferred and the source-rules scanner can treat the closure as part of the call (`check-source-rules.sh` now includes a trailing `{ }` block in the log-call scope). Messages of WARN and ERROR start with the code's raw value. | Root `CLAUDE.md` Code style (already in that form) |
+| 2026-10-11 | 2.2 | `Platform.logger` | Added as on Android: the platform's default sink (no-op in the core, `os.Logger` in `Rubicon`) and the fallback of a failed logger; `TransportSettings` carries the instance's `Log`. | - |
 | 2026-10-11 | 1.2 | Where the property rules live | As on Android (log row 1.2): property validation, the conversion table, the limits and the `beforeSend` rules are in the root `CLAUDE.md` under Public API; the core file points there. | - |
 
 ## 16. Out of scope for the first release

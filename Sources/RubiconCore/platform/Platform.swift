@@ -14,6 +14,9 @@ package struct Platform: Sendable {
     package var contextProvider: any ContextProvider
     package var processFacts: any ProcessFacts
     package var lifecycleSource: any LifecycleSource
+    /// The platform's default logger: the `os.Logger` sink on iOS, nothing in the core. Used when
+    /// the developer sets none, and as the fallback of a failed logger (Logging 1, 4b).
+    package var logger: RubiconLogger
     /// `Application Support/rubicon/` on iOS (iOS Identity 1), a temporary directory in tests.
     package var storageRoot: URL
     /// The file operations of the file-based stores, a seam for fault injection and the locked state.
@@ -29,6 +32,7 @@ package struct Platform: Sendable {
         contextProvider: any ContextProvider,
         processFacts: any ProcessFacts,
         lifecycleSource: any LifecycleSource,
+        logger: @escaping RubiconLogger,
         storageRoot: URL,
         fileSystem: any FileSystem
     ) {
@@ -41,6 +45,7 @@ package struct Platform: Sendable {
         self.contextProvider = contextProvider
         self.processFacts = processFacts
         self.lifecycleSource = lifecycleSource
+        self.logger = logger
         self.storageRoot = storageRoot
         self.fileSystem = fileSystem
     }

@@ -91,15 +91,17 @@ extension HttpResult: CustomStringConvertible {
 }
 
 /// What a transport takes from the validated configuration and the instance: the API key for
-/// `Authorization` and `network.headers` with the reserved ones already removed. Step 2.2 adds the
-/// instance's log.
+/// `Authorization`, `network.headers` with the reserved ones already removed, and the instance's
+/// log (Android log 5.1).
 package struct TransportSettings: Sendable {
     package var apiKey: String
     package var headers: [String: String]
+    package var log: Log
 
-    package init(apiKey: String, headers: [String: String] = [:]) {
+    package init(apiKey: String, headers: [String: String] = [:], log: Log) {
         self.apiKey = apiKey
         self.headers = headers
+        self.log = log
     }
 }
 

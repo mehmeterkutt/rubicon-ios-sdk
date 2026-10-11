@@ -47,7 +47,9 @@ struct FakeTransportTests {
             body: Data("{\"secret\":1}".utf8))
         #expect(request.description == "HttpRequest(POST https://h/v1/batch, body=12 bytes)")
         #expect(
-            TransportSettings(apiKey: "secret", headers: ["X": "y"]).description
+            TransportSettings(
+                apiKey: "secret", headers: ["X": "y"], log: Log(level: .off, logger: nil, platformLogger: noOpLogger)
+            ).description
                 == "TransportSettings(1 custom headers)")
     }
 

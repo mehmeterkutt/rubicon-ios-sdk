@@ -1,4 +1,5 @@
 swift.enum ContextField: enum ContextField
+swift.enum LogLevel: enum LogLevel
 swift.enum.case ContextField.appBuild: case appBuild
 swift.enum.case ContextField.appName: case appName
 swift.enum.case ContextField.appNamespace: case appNamespace
@@ -15,3 +16,10 @@ swift.enum.case ContextField.screenDensity: case screenDensity
 swift.enum.case ContextField.screenHeight: case screenHeight
 swift.enum.case ContextField.screenWidth: case screenWidth
 swift.enum.case ContextField.timezone: case timezone
+swift.enum.case LogLevel.debug: case debug
+swift.enum.case LogLevel.error: case error
+swift.enum.case LogLevel.info: case info
+swift.enum.case LogLevel.off: case off
+swift.enum.case LogLevel.warn: case warn
+swift.func.op LogLevel.<(_:_:): static func < (lhs: LogLevel, rhs: LogLevel) -> Bool
+swift.typealias RubiconLogger: typealias RubiconLogger = @Sendable (_ level: LogLevel, _ message: String, _ error: (any Error)?) -> Void
