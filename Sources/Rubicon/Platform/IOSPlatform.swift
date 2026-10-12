@@ -20,7 +20,7 @@ enum IOSPlatform {
     static func make(bundle: Bundle, processFacts: IOSProcessFacts, storageRoot: URL? = nil) -> Platform {
         Platform(
             clock: SystemClock(), elapsedClock: UptimeClock(), random: SystemRandom(), scheduler: GCDScheduler(),
-            networkMonitor: AlwaysConnectedNetworkMonitor(), transportFactory: URLSessionTransport.factory,
+            networkMonitor: PathNetworkMonitor(), transportFactory: URLSessionTransport.factory,
             contextProvider: StaticContextProvider(), processFacts: processFacts,
             lifecycleSource: ApplicationLifecycleSource(), logger: OSLogSink.shared.rubiconLogger,
             storageRoot: storageRoot ?? Self.storageRoot(), fileSystem: PosixFileSystem())

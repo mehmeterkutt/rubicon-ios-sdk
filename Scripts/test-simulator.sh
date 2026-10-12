@@ -25,6 +25,8 @@ if best is None:
 print(best[1], file=sys.stdout)
 print(f"simulator: {best[2]} on {best[3]}", file=sys.stderr)
 ' "$major")
+# Without `-collect-test-diagnostics never` a failing test makes xcodebuild run `simctl diagnose`
+# for up to ten minutes before it reports (plan section 15, step 7.2).
 xcodebuild test -scheme Rubicon-Package -destination "id=$udid" -derivedDataPath .build/xcode \
-    -only-testing:RubiconTests -only-testing:RubiconObjCTests -quiet
+    -only-testing:RubiconTests -only-testing:RubiconObjCTests -collect-test-diagnostics never -quiet
 echo "simulator tests: ok"
