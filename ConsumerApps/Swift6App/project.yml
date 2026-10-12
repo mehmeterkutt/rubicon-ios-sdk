@@ -12,18 +12,56 @@ targets:
   Swift6App:
     type: application
     platform: iOS
-    sources: [Sources]
+    sources: [Sources, ../Shared/App]
     dependencies:
       - package: Rubicon
         product: Rubicon
+    info:
+      path: Info.plist
+      properties:
+        UILaunchScreen: {}
+        # The scene lifecycle is mandatory for apps built with the iOS 27 SDK.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
+        # The UI test runner's server listens on 127.0.0.1; plain HTTP to it is local networking.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rubicon.analytics.consumer.swift6app
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: NO
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
         CODE_SIGN_IDENTITY: ""
         CODE_SIGNING_REQUIRED: NO
+  Swift6AppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    # XCUIAutomation links for iOS 17; the app under test keeps the iOS 15 floor.
+    deploymentTarget: "17.0"
+    sources: [../Shared/UITests]
+    dependencies:
+      - target: Swift6App
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+schemes:
+  Swift6App:
+    build:
+      targets:
+        Swift6App: all
+        Swift6AppUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets: [Swift6AppUITests]

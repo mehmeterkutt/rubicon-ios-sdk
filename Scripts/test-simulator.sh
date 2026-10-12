@@ -6,27 +6,47 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 major=${1:-}
-udid=$(xcrun simctl list devices available -j | python3 -c '
-import json, sys
-major = sys.argv[1]
-devices = json.load(sys.stdin)["devices"]
-best = None
-for runtime, items in devices.items():
-    if "iOS" not in runtime:
-        continue
-    version = tuple(int(p) for p in runtime.rsplit("iOS-", 1)[1].split("-"))
-    if major and version[0] != int(major):
-        continue
-    for d in items:
-        if d["name"].startswith("iPhone") and (best is None or version > best[0]):
-            best = (version, d["udid"], d["name"], runtime)
-if best is None:
-    sys.exit(f"no available iPhone simulator for iOS {major or 'any'}")
-print(best[1], file=sys.stdout)
-print(f"simulator: {best[2]} on {best[3]}", file=sys.stderr)
-' "$major")
+udid=$(xcrun simctl list devices available -j | python3 Scripts/lib/pick-simulator.py "$major")
 # Without `-collect-test-diagnostics never` a failing test makes xcodebuild run `simctl diagnose`
 # for up to ten minutes before it reports (plan section 15, step 7.2).
 xcodebuild test -scheme Rubicon-Package -destination "id=$udid" -derivedDataPath .build/xcode \
-    -only-testing:RubiconTests -only-testing:RubiconObjCTests -collect-test-diagnostics never -quiet
+    -only-testing:RubiconTests -only-testing:RubiconObjCTests -collect-test-diagnostics never \
+    -enableCodeCoverage YES -quiet
 echo "simulator tests: ok"
+
+# The Rubicon target's coverage gate (D9, 80 percent) is measured here: the macOS export of
+# `swift test` holds the core only (plan section 15, step 7.2).
+result=$(ls -td .build/xcode/Logs/Test/*.xcresult | head -1)
+xcrun xccov view --report --json "$result" | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+gates = {"Sources/Rubicon/": 80.0, "Sources/RubiconObjC/": None}
+totals = {k: [0, 0] for k in gates}
+seen = set()
+# A source file appears under every target that links it; count it once.
+for target in report.get("targets", []):
+    for f in target.get("files", []):
+        if f["path"] in seen:
+            continue
+        seen.add(f["path"])
+        for prefix in gates:
+            if "/" + prefix in f["path"]:
+                totals[prefix][0] += f["executableLines"]
+                totals[prefix][1] += f["coveredLines"]
+                break
+failed = False
+for prefix, (count, covered) in totals.items():
+    if count == 0:
+        print(f"coverage: {prefix} has no lines in the simulator run")
+        continue
+    pct = 100.0 * covered / count
+    gate = gates[prefix]
+    if gate is None:
+        print(f"coverage: {prefix} {pct:.1f}% of {count} lines (no gate: forwarding code, D9)")
+        continue
+    ok = pct >= gate
+    failed |= not ok
+    verdict = "ok" if ok else "BELOW GATE"
+    print(f"coverage: {prefix} {pct:.1f}% of {count} lines (gate {gate:.0f}%) {verdict}")
+sys.exit(1 if failed else 0)
+'

@@ -11,3 +11,4 @@ DerivedData/
 /.index-build/
 Package.resolved
 .idea/
+/ConsumerApps/*/Info.plist
