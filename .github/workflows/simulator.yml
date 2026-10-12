@@ -1,7 +1,7 @@
 name: Simulator
 
 # The simulator lane (D6): the Rubicon and Objective-C test targets on the newest simulator, the
-# three consumer apps, the DocC build. Runs only when the iOS side or the package shape changes.
+# three consumer apps with their UI scenarios (step 8.1), the DocC build. Runs only when the iOS side or the package shape changes.
 on:
   pull_request:
     paths:
@@ -29,6 +29,10 @@ env:
 jobs:
   simulator:
     name: simulator and consumer apps
+    # The lane costs about twenty macOS minutes a run. While a pull request iterates on something the
+    # macOS lane can show by itself, the label `skip-simulator` on the pull request skips it; the
+    # label comes off before the merge so the lane runs once on the final head.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-simulator') }}
     runs-on: macos-26
     timeout-minutes: 45
     steps:
@@ -36,7 +40,7 @@ jobs:
       - run: brew install xcodegen
       - run: xcrun simctl list runtimes
       - run: Scripts/test-simulator.sh
-      - run: Scripts/build-consumer-apps.sh
+      - run: Scripts/build-consumer-apps.sh --test
       - run: Scripts/check-docs.sh --build
       - if: failure()
         uses: actions/upload-artifact@v4
@@ -44,4 +48,5 @@ jobs:
           name: simulator-results
           path: |
             .build/xcode/Logs/Test/*.xcresult
+            .build/consumer/Logs/Test/*.xcresult
           retention-days: 7

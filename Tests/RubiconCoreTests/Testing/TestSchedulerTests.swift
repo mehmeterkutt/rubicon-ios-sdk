@@ -90,36 +90,38 @@ struct TestSchedulerTests {
     }
 }
 
-@Suite("GCDScheduler")
-struct GCDSchedulerTests {
-    @Test("each worker runs one task at a time and keeps order")
-    func serialWorkers() {
-        let scheduler = GCDScheduler()
-        let seen = Locked<[Int]>([])
-        let done = DispatchSemaphore(value: 0)
-        for i in 0..<20 {
-            scheduler.run(on: .writer) {
-                scheduler.assertOn(.writer)
-                seen.withLock { $0.append(i) }
-                if i == 19 { done.signal() }
+extension RealWorldSuites {
+    @Suite("GCDScheduler")
+    struct GCDSchedulerTests {
+        @Test("each worker runs one task at a time and keeps order")
+        func serialWorkers() {
+            let scheduler = GCDScheduler()
+            let seen = Locked<[Int]>([])
+            let done = DispatchSemaphore(value: 0)
+            for i in 0..<20 {
+                scheduler.run(on: .writer) {
+                    scheduler.assertOn(.writer)
+                    seen.withLock { $0.append(i) }
+                    if i == 19 { done.signal() }
+                }
             }
+            #expect(done.wait(timeout: .now() + 5) == .success)
+            #expect(seen.current == Array(0..<20))
         }
-        #expect(done.wait(timeout: .now() + 5) == .success)
-        #expect(seen.current == Array(0..<20))
-    }
 
-    @Test("a cancelled delayed item does not run, a kept one does")
-    func delayedItems() {
-        let scheduler = GCDScheduler()
-        let ran = Locked<[String]>([])
-        let done = DispatchSemaphore(value: 0)
-        let cancelled = scheduler.schedule(after: 20, on: .uploader) { ran.withLock { $0.append("cancelled") } }
-        cancelled.cancel()
-        _ = scheduler.schedule(after: 20, on: .uploader) {
-            ran.withLock { $0.append("kept") }
-            done.signal()
+        @Test("a cancelled delayed item does not run, a kept one does")
+        func delayedItems() {
+            let scheduler = GCDScheduler()
+            let ran = Locked<[String]>([])
+            let done = DispatchSemaphore(value: 0)
+            let cancelled = scheduler.schedule(after: 20, on: .uploader) { ran.withLock { $0.append("cancelled") } }
+            cancelled.cancel()
+            _ = scheduler.schedule(after: 20, on: .uploader) {
+                ran.withLock { $0.append("kept") }
+                done.signal()
+            }
+            #expect(done.wait(timeout: .now() + 5) == .success)
+            #expect(ran.current == ["kept"])
         }
-        #expect(done.wait(timeout: .now() + 5) == .success)
-        #expect(ran.current == ["kept"])
     }
 }

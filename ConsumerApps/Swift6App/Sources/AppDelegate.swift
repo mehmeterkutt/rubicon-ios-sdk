@@ -1,19 +1,15 @@
 import Rubicon
 import UIKit
 
-// The smallest app that imports the product. Step 8.1 adds the scenario UI and tests.
+// The consumer app (iOS Public API 3, step 8.1): the instance is created at launch, the shared
+// scenario screen is built by the scene delegate (the scene manifest is in the Info.plist).
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
-    var window: UIWindow?
-
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        let window = UIWindow(frame: UIScreen.main.bounds)
-        window.rootViewController = UIViewController()
-        window.makeKeyAndVisible()
-        self.window = window
+        ScenarioApp.shared.start()
         return true
     }
 }

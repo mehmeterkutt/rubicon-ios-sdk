@@ -50,7 +50,10 @@ package final class URLSessionTransport: NSObject, HttpTransport, URLSessionTask
     private let compress: @Sendable (Data) throws -> Data
     private let session: URLSession
     // The task in flight, for `cancelCurrent`; guarded by `current`.
-    private let current = Locked<URLSessionTask?>(nil)
+    // The request in flight and whether `shutdown` ran. A task is created and recorded under the
+    // lock and never after `stopped`: a task created in an invalidated session is an `NSException`,
+    // which nothing in Swift can catch (seen once in CI, plan section 15).
+    private let state = Locked<(task: URLSessionTask?, stopped: Bool)>((nil, false))
 
     /// The production factory: the transport of `Platform.transportFactory` on iOS.
     package static let factory: HttpTransportFactory = { settings, platform in
@@ -102,36 +105,51 @@ package final class URLSessionTransport: NSObject, HttpTransport, URLSessionTask
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: Headers.authorization)
         urlRequest.setValue(userAgent, forHTTPHeaderField: Headers.userAgent)
         var sentBytes = 0
-        let task: URLSessionTask
+        var payload: Data?
+        if let body = request.body {
+            let compressed = compressed(body)
+            sentBytes = compressed.bytes.count
+            payload = compressed.bytes
+            urlRequest.setValue(Headers.json, forHTTPHeaderField: Headers.contentType)
+            if compressed.gzipped { urlRequest.setValue(Headers.gzip, forHTTPHeaderField: Headers.contentEncoding) }
+            urlRequest.setValue(String(compressed.bytes.count), forHTTPHeaderField: Headers.contentLength)
+        }
         let done = DispatchSemaphore(value: 0)
         let outcome = Locked<(Data?, URLResponse?, (any Error)?)>((nil, nil, nil))
         let completion: @Sendable (Data?, URLResponse?, (any Error)?) -> Void = { data, response, error in
             outcome.withLock { $0 = (data, response, error) }
             done.signal()
         }
-        if let body = request.body {
-            let payload = compressed(body)
-            sentBytes = payload.bytes.count
-            urlRequest.setValue(Headers.json, forHTTPHeaderField: Headers.contentType)
-            if payload.gzipped { urlRequest.setValue(Headers.gzip, forHTTPHeaderField: Headers.contentEncoding) }
-            urlRequest.setValue(String(payload.bytes.count), forHTTPHeaderField: Headers.contentLength)
-            task = session.uploadTask(with: urlRequest, from: payload.bytes, completionHandler: completion)
-        } else {
-            task = session.dataTask(with: urlRequest, completionHandler: completion)
+        let task: URLSessionTask? = state.withLock { s in
+            if s.stopped { return nil }
+            let task: URLSessionTask
+            if let payload {
+                task = session.uploadTask(with: urlRequest, from: payload, completionHandler: completion)
+            } else {
+                task = session.dataTask(with: urlRequest, completionHandler: completion)
+            }
+            s.task = task
+            return task
         }
-        current.withLock { $0 = task }
-        task.resume()
-        // The resource timeout ends the task first; the margin only guards against a stuck stack.
-        _ = done.wait(timeout: .now() + session.configuration.timeoutIntervalForResource + 30)
-        current.withLock { $0 = nil }
-        let (data, response, error) = outcome.current
         let result: HttpResult
-        if let error {
-            result = failure(error, request: request)
-        } else if let http = response as? HTTPURLResponse {
-            result = receive(http, data: data ?? Data(), request: request)
+        var response: URLResponse?
+        if let task {
+            task.resume()
+            // The resource timeout ends the task first; the margin only guards against a stuck stack.
+            _ = done.wait(timeout: .now() + session.configuration.timeoutIntervalForResource + 30)
+            state.withLock { $0.task = nil }
+            let (data, received, error) = outcome.current
+            response = received
+            if let error {
+                result = failure(error, request: request)
+            } else if let http = received as? HTTPURLResponse {
+                result = receive(http, data: data ?? Data(), request: request)
+            } else {
+                result = failure(URLError(.badServerResponse), request: request)
+            }
         } else {
-            result = failure(URLError(.badServerResponse), request: request)
+            // After `shutdown`: nothing is sent, and the caller sees the same result as a cancelled task.
+            result = failure(URLError(.cancelled), request: request)
         }
         let elapsed = elapsedClock.elapsedMillis() - started
         let requestId =
@@ -145,10 +163,13 @@ package final class URLSessionTransport: NSObject, HttpTransport, URLSessionTask
 
     /// Cancels the request in flight, if any, from any thread; it completes with `cancelled`.
     package func cancelCurrent() {
-        current.current?.cancel()
+        state.current.task?.cancel()
     }
 
+    /// Invalidates the session; a request in flight completes with `cancelled`, a later `execute`
+    /// returns `cancelled` without a task.
     package func shutdown() {
+        state.withLock { $0.stopped = true }
         session.invalidateAndCancel()
     }
 

@@ -46,11 +46,14 @@ Scripts/build-consumer-apps.sh   # XcodeGen + xcodebuild for Swift5App, Swift6Ap
 Scripts/api-diff.sh --update  # after a public API change; commit API/*.txt
 Scripts/refresh-golden.sh     # copy the Android golden files again (ANDROID_SDK_DIR overrides the path)
 swift test --sanitize=thread  # Thread Sanitizer on the core tests (nightly in CI)
+RUBICON_STRESS=1 swift test --filter CoreIntegrationTests/stress   # the stress suite; nightly, not per pull request
 ```
 
 Local toolchain is Xcode 27 (Swift 6.4); the release toolchain is Xcode 26.6 on the `macos-26`
 runner, the last that builds for the iOS 15 floor. CI is the gate: a build that passes locally and
 fails there is fixed, not waved through. Keep the sources inside `swift-tools-version` 6.0.
+The simulator lane costs about twenty macOS minutes a run; while a pull request iterates on what the
+macOS lane shows by itself, the label `skip-simulator` skips it. The label comes off before the merge.
 
 ## Non-negotiables
 
@@ -134,6 +137,9 @@ A pull request that breaks one does not merge.
 - Uploads use the SDK's own `URLSession` behind the internal `HttpTransport`; never
   `URLSession.shared`, never the app's session (iOS HTTP 1).
 - No `#available` or `@available(iOS ...)` checks: every API used exists on iOS 15 (iOS Public API 2).
+  The test targets too: the local Xcode 27 builds for iOS 17 and up and does not report an iOS 16
+  API (the Swift Testing trait `.timeLimit`, `Duration`, `OSAllocatedUnfairLock`); only the Xcode
+  26.6 build in CI does.
   No `swift-docc-plugin`, no SwiftLint: tools come from the toolchain or Homebrew on the runner.
 - Test-only and tool-only additions are allowed but named in the pull request (so far: XcodeGen).
 
@@ -162,6 +168,14 @@ A pull request that breaks one does not merge.
   `Scripts/test-simulator.sh`; the consumer apps and the demo app cover what the simulator cannot.
 - No `sleep` and no real waiting in unit tests: time is virtual through the injected `Scheduler`.
   Every file test uses its own temporary directory; suites run in parallel, nothing is global.
+- `TestHTTPServer` (POSIX sockets, D15 revised: `NWListener` failed to listen and to accept on the
+  CI simulator) answers in script order across all connections; a test that scripts answers for
+  more than one connection binds them to paths with `respond(to:with:)`.
+- A suite that holds a real socket or a real queue is nested under its target's serialized parent
+  (`RealWorldSuites` in the core tests, `ProcessWideSuites` in the Rubicon tests). A suite that
+  creates the process-wide instance also holds `InstanceLease` in its fixture, first stored property,
+  one fixture per test: `swift test` runs both test targets in one process, and a fixture's
+  `resetForTests` stops whatever instance the slot holds, including another target's.
 - Coverage gates (`check-coverage.sh`): 90 percent of lines in `RubiconCore`, 80 percent in `Rubicon`.
 - Anything touching upload, storage or identity gets one manual run in the demo app against its fake
   server, once the demo app uses the SDK (step 9.2).

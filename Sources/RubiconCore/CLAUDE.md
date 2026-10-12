@@ -29,10 +29,10 @@ public types at the top level of the target.
   and the session id (iOS Event Model 3).
 - Time in memory is `Date` from the injected clock at call time; on the wire `timestamp`, `sent_at`
   and `context.session.started_at` are epoch milliseconds, rounded, converted once in the
-  serializer. `Date` in properties becomes `yyyy-MM-dd'T'HH:mm:ss.SSS'Z'` through one shared
-  `ISO8601DateFormatter` with fractional seconds; years outside 0000 to 9999 are rejected before
-  it; the Android `IsoDates` vectors run against it. `sent_at` is rewritten on every attempt (iOS
-  Event Model 2, iOS Serialization 3).
+  serializer. `Date` in properties becomes `yyyy-MM-dd'T'HH:mm:ss.SSS'Z'` through `IsoDates`, the
+  port of the Android calendar arithmetic (Foundation's formatter is Julian before 1582); years
+  outside 0000 to 9999 are rejected before it; the Android vectors run against it. `sent_at` is
+  rewritten on every attempt (iOS Event Model 2, iOS Serialization 3, version 2).
 
 ## Configuration
 
@@ -137,7 +137,8 @@ public types at the top level of the target.
 - Locked device (iOS Disk 1): on `willBecomeUnavailable` the writer syncs, closes its handles and
   stops draining; events wait in the channel; a read or write that fails with a permission error is
   "locked", not "unreadable"; on `didBecomeAvailable` the writer drains and, on the first
-  availability of the process, loads the stores. The uploader reads no batch while locked.
+  availability of the process, loads the stores. The uploader reads no batch while locked. The
+  platform's startup flag is advisory: the writer always tries to load first (log row 7.1).
 
 ## Storage and JSON
 
@@ -165,6 +166,8 @@ public types at the top level of the target.
 - Stores (Disk 7): whole-file JSON with `"v"`, `.tmp` + sync + rename, coalesced on the writer.
   Missing -> create; unreadable (corrupt, newer `v`) -> in-memory, never overwrite; locked -> wait.
   `v` is the file format; raising it is a design discussion with the user.
+- `PropertyValue.foundationValue` and `EventWire.contextObject` are `package` for the Objective-C
+  wrapper, which shows properties and the context as `NSDictionary`; nothing else converts back.
 - Only the internal conversion layer (`json/`) touches `JSONSerialization`: writing with
   `.sortedKeys` from the `PropertyValue` tree (`NSNull` for null, `NSNumber` from the typed enum so
   `true` and `1` stay apart); reading with typed checks and the `CFBoolean` rule; nothing may depend
@@ -221,6 +224,9 @@ public types at the top level of the target.
   under `com.rubicon.analytics.inCallback`; log lines and observer updates caused on that thread
   while it is set are ignored. The "threw" halves of Logging 4b exist only in the Objective-C
   wrapper; a Swift closure that traps stops the app, and the documentation says so (iOS Logging 2).
+  The wrapper reports a failure from inside the failing callback, so `reportLoggerFailure` and
+  `reportObserverFailure` run their handlers with the flag lifted: the `LOGGER_THREW` or
+  `OBSERVER_THREW` line is the SDK's own and is always written.
 - `typealias EventObserver = @Sendable (EventUpdate) -> Void`; `enum EventUpdate: Sendable { case
   queued(any Event), sent(messageIds:), dropped(messageIds:reason:) }`, not `@frozen`, called on the
   writer and uploader queues, never the main thread; `description` gives ids or counts only.

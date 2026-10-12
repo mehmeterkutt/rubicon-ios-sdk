@@ -38,9 +38,15 @@ let package = Package(
         // The Objective-C wrapper: Swift files with @objc classes, RBN prefix.
         .target(
             name: "RubiconObjC",
-            dependencies: ["Rubicon"],
+            dependencies: ["Rubicon", "RubiconObjCSupport"],
             path: "Sources/RubiconObjC",
             exclude: ["CLAUDE.md"]
+        ),
+        // One Objective-C function the wrapper needs and Swift cannot write: catching NSException
+        // from a developer's block (iOS Public API 6, iOS Logging 2). Never a product.
+        .target(
+            name: "RubiconObjCSupport",
+            path: "Sources/RubiconObjCSupport"
         ),
         // Shared test support; never a product.
         .target(
@@ -56,7 +62,7 @@ let package = Package(
         ),
         .testTarget(
             name: "RubiconTests",
-            dependencies: ["Rubicon", "RubiconTesting"],
+            dependencies: ["Rubicon", "RubiconObjC", "RubiconTesting"],
             path: "Tests/RubiconTests"
         ),
         // Objective-C, XCTest, on the simulator (D16).

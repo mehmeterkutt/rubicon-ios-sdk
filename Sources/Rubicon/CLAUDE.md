@@ -43,6 +43,8 @@ collection, the network monitor, the HTTP transport's `URLSession`, `RubiconNetw
   asks the writer to persist the stores and waits at most one second; no upload.
 - Protected data (iOS Disk 1): `isProtectedDataAvailable` read on the main thread at startup;
   `protectedDataWillBecomeUnavailableNotification` and `DidBecomeAvailable` forwarded to the writer.
+  The startup flag is advisory: the writer tries to load and a permission error decides, since the
+  simulator's test host reports the flag false and never posts the notification (log row 7.1).
 - Install and update (iOS Lifecycle 4): on the first foreground, with the version record in
   `DeviceStore`. No record: `installTime` = creation date of the `Library` directory, `updateTime` =
   creation date of `Bundle.main.bundleURL`; within 60 s of each other -> `Application Installed`,
@@ -59,7 +61,8 @@ collection, the network monitor, the HTTP transport's `URLSession`, `RubiconNetw
   starts, `class_addMethod` then `class_replaceMethod` with `method_exchangeImplementations` as the
   fallback, never reversed; a failed installation is one WARN. Nothing else is ever swizzled.
 - Screen names (iOS Lifecycle 2): `(type(of: controller) as? ScreenNamed.Type)?.screenName`
-  (`name_source: "annotation"`), else the class name without a module prefix and without
+  (`name_source: "annotation"`), else the class method `rbnScreenName` found by selector (the
+  wrapper's `RBNScreenNamed`; this target does not see the wrapper), else the class name without a module prefix and without
   `ViewController` (`name_source: "class"`); never the title. Skip classes from outside the main
   bundle, `UIHostingController` and its subclasses, container controllers; resolve the visible
   controller through presented, `visibleViewController`, `selectedViewController`, first child. The
@@ -73,9 +76,10 @@ collection, the network monitor, the HTTP transport's `URLSession`, `RubiconNetw
 
 ## Context collection
 
-- `ContextProvider` is implemented here; the core's `ContextStep` adds the values. Nothing is
-  collected in the factory or on the main thread; static values once, lazily, on the worker
-  (Context 1).
+- `ContextProvider` is implemented here; the core's pipeline adds the values. Nothing touches the
+  disk in the factory; the bundle values and the `uname` model are read once on the worker, and
+  the UIKit values (OS version, idiom, `nativeBounds`), main-actor isolated in Swift 6, once on the
+  main thread by `attach()` at creation: memory reads only (Context 1, log row 7.3).
 - Sources (iOS Context 1): `app.name` `CFBundleName` else `CFBundleDisplayName`; `app.version`
   `CFBundleShortVersionString`; `app.build` `CFBundleVersion`; `app.namespace` `bundleIdentifier`;
   `device.manufacturer` `"Apple"`; `device.model` `utsname.machine`; `device.type` from
@@ -130,9 +134,10 @@ collection, the network monitor, the HTTP transport's `URLSession`, `RubiconNetw
 
 - `logging.logger = nil` -> `os.Logger(subsystem: "com.rubicon.analytics", category: "Rubicon")`,
   the only code in the SDK that may call `os.Logger` or `os_log`. Mapping: `error` -> `.error`,
-  `warn` -> `.notice`, `info` -> `.info`, `debug` -> `.debug`; the message is interpolated with
-  `privacy: .public`, which the content rule makes safe (iOS Logging 1). Logging is never compiled
-  out of release builds.
+  `warn` -> `.default` (the notice level), `info` -> `.info`, `debug` -> `.debug`; the message is
+  interpolated with `privacy: .public`, which the content rule makes safe (iOS Logging 1); an error
+  is named by domain and code, never its description. Logging is never compiled out of release
+  builds.
 
 ## Privacy manifest
 

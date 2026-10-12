@@ -179,6 +179,24 @@ struct LogTests {
         #expect(counted.current == [.observerThrew])
     }
 
+    @Test("a failure reported from inside the failing callback is still written, as the wrapper reports it")
+    func failureReportedInsideCallback() {
+        let log = log(level: .warn)
+        let developer = RecordingLogger()
+        let withLogger = self.log(logger: developer.asLogger)
+
+        // The wrapper's box reports while the failing callback is still on this thread's stack.
+        log.callbacks.notifyObserver { log.callbacks.reportObserverFailure(FileSystemError.notFound) }
+        withLogger.callbacks.log(.warn, "raises", nil)
+        withLogger.callbacks.log(.warn, "second", nil)
+        withLogger.callbacks.notifyObserver { withLogger.callbacks.reportLoggerFailure(FileSystemError.notFound) }
+
+        #expect(!log.callbacks.isObserverEnabled)
+        #expect(platform.messages.contains("OBSERVER_THREW: Event observer threw; it is switched off"))
+        #expect(platform.messages.contains("LOGGER_THREW: Custom logger threw; falling back to the default logger"))
+        #expect(developer.messages == ["raises", "second"])
+    }
+
     @Test("a logger that logs through the SDK is ignored, without recursion, and the line still counts")
     func reentrantLogger() {
         let developer = RecordingLogger()

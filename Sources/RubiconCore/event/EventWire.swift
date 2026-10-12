@@ -41,7 +41,7 @@ package enum EventWire {
         return object
     }
 
-    private static func contextObject(_ context: EventContext) -> [String: PropertyValue] {
+    package static func contextObject(_ context: EventContext) -> [String: PropertyValue] {
         var object: [String: PropertyValue] = [:]
         group(
             &object, "app",

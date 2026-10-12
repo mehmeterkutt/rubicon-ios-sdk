@@ -40,6 +40,27 @@ package enum PropertyNormalizer {
         return Result(values: values, problems: problems)
     }
 
+    /// Normalizes values a hook returned, with the same rules and limits as a public call's
+    /// (Event Model 3): keys and strings are cut, counts and depth are enforced, a non-finite number
+    /// is dropped.
+    package static func normalize(values: [String: PropertyValue]) -> Result {
+        var raw: [String: Any] = [:]
+        for (key, value) in values { raw[key] = foundation(value) }
+        return normalize(raw)
+    }
+
+    private static func foundation(_ value: PropertyValue) -> Any {
+        switch value {
+        case .string(let text): return text
+        case .int(let number): return number
+        case .double(let number): return number
+        case .bool(let flag): return flag
+        case .null: return NSNull()
+        case .array(let items): return items.map(foundation)
+        case .object(let fields): return fields.mapValues(foundation)
+        }
+    }
+
     /// Merges super properties into an event's normalized properties: the event's own key wins,
     /// and above `maxProperties` the super properties are dropped first (Event Model 1,
     /// Serialization 3).

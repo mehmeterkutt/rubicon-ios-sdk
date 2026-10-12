@@ -43,7 +43,7 @@ swift.enum.case DropReason.storageError: case storageError
 swift.enum.case EventSource.app: case app
 swift.enum.case EventSource.auto: case auto
 swift.enum.case EventUpdate.dropped(messageIds:reason:): case dropped(messageIds: [String], reason: DropReason)
-swift.enum.case EventUpdate.queued(_:): case queued(any Event)
+swift.enum.case EventUpdate.queued(_:): case queuedEvent
 swift.enum.case EventUpdate.sent(messageIds:): case sent(messageIds: [String])
 swift.enum.case LogLevel.debug: case debug
 swift.enum.case LogLevel.error: case error
@@ -193,6 +193,6 @@ swift.struct SessionContext: struct SessionContext
 swift.struct TrackEvent: struct TrackEvent
 swift.type.property AnalyticsConfiguration.defaultDebug: static let defaultDebug: Bool
 swift.type.property AnalyticsConfiguration.defaultHost: static let defaultHost: String
-swift.typealias BeforeSend: typealias BeforeSend = @Sendable (any Event) -> (any Event)?
+swift.typealias BeforeSend: typealias BeforeSend = @Sendable Event -> Event?
 swift.typealias EventObserver: typealias EventObserver = @Sendable (EventUpdate) -> Void
-swift.typealias RubiconLogger: typealias RubiconLogger = @Sendable (LogLevel, String, (any Error)?) -> Void
+swift.typealias RubiconLogger: typealias RubiconLogger = @Sendable (LogLevel, String, Error?) -> Void
