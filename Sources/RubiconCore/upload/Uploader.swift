@@ -167,6 +167,9 @@ package final class Uploader: @unchecked Sendable {
         wait = nil
         var unreadable: Set<Int64> = []
         while true {
+            // Checked before every batch, not only at the start: a `shutdown` that lands mid-drain
+            // must not be followed by another request (the transport's session is gone by then).
+            if stoppedFlag.isSet { return }
             if networkReturned.clear() { policy.onNetworkRegained() }
             guard networkMonitor.isConnected else { return }
             fetchRemoteOnce()

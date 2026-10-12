@@ -30,6 +30,22 @@ struct UploaderTests {
         func shutdown() { inner.shutdown() }
     }
 
+    /// Runs a block at the start of each request, for a `shutdown` that lands mid-drain.
+    final class HookedTransport: HttpTransport, @unchecked Sendable {
+        let inner: FakeTransport
+        let beforeEach = Locked<(@Sendable () -> Void)?>(nil)
+
+        init(_ inner: FakeTransport) { self.inner = inner }
+
+        func execute(_ request: HttpRequest) -> HttpResult {
+            beforeEach.current?()
+            return inner.execute(request)
+        }
+
+        func cancelCurrent() { inner.cancelCurrent() }
+        func shutdown() { inner.shutdown() }
+    }
+
     final class Harness: @unchecked Sendable {
         let test = TestPlatform()
         let updates = Locked<[EventUpdate]>([])
@@ -341,6 +357,23 @@ struct UploaderTests {
         h.runCurrent()
 
         #expect(h.transport.requests.count == 2)
+    }
+
+    @Test("shutdown in the middle of a drain ends it before the next batch")
+    func shutdownMidDrain() {
+        let h = Harness()
+        let hooked = HookedTransport(h.transport)
+        let uploader = h.makeUploader(eventStore: h.eventStore, transport: hooked, observe: false)
+        // Two segments; the first request's hook shuts the uploader down, as a test's teardown
+        // does from another queue while a drain is running.
+        h.events(4)
+        hooked.beforeEach.withLock { $0 = { uploader.shutdown() } }
+
+        uploader.start()
+        uploader.signal()
+        h.runCurrent()
+
+        #expect(h.transport.requests.count == 1)
     }
 
     @Test("no two requests overlap under a burst of signals")

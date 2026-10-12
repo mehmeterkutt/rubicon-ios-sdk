@@ -273,6 +273,42 @@ extension RealWorldSuites {
             #expect(!h.test.logger.lines.contains { $0.level == .error || $0.level == .warn })
         }
 
+        @Test("shutdown while a request is being prepared creates no task and returns cancelled")
+        func shutdownBeforeTheTask() throws {
+            let h = try TransportHarness()
+            let prepared = DispatchSemaphore(value: 0)
+            let resume = DispatchSemaphore(value: 0)
+            // Compression runs right before the task is created: holding the first call there is the
+            // race window; the later call below passes through.
+            let held = Locked(false)
+            let transport = h.transport(compress: { data in
+                let first = held.withLock { was -> Bool in
+                    defer { was = true }
+                    return !was
+                }
+                if first {
+                    prepared.signal()
+                    resume.wait()
+                }
+                return try Gzip.compress(data)
+            })
+            let result = Locked<HttpResult?>(nil)
+            let finished = DispatchSemaphore(value: 0)
+            let caller = Thread {
+                result.withLock { $0 = h.post(transport) }
+                finished.signal()
+            }
+            caller.start()
+            #expect(prepared.wait(timeout: .now() + 5) == .success)
+            transport.shutdown()
+            resume.signal()
+            #expect(finished.wait(timeout: .now() + 5) == .success)
+
+            #expect(h.kind(try #require(result.current)) == .cancelled)
+            #expect(h.server.requests.isEmpty)
+            #expect(h.kind(h.post(transport)) == .cancelled)
+        }
+
         @Test("a refused connection is connect; localhost and IP hosts are never resolved")
         func refused() throws {
             let h = try TransportHarness()
