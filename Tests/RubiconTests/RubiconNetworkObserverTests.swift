@@ -97,7 +97,7 @@ struct RubiconNetworkObserverTests {
         @discardableResult
         func call(
             _ observer: RubiconNetworkObserver, path: String = "/", method: String = "GET", body: Data? = nil,
-            url: URL? = nil, timeout: TimeInterval = 5, cancelAfter: TimeInterval? = nil
+            url: URL? = nil, timeout: TimeInterval = 5, cancelWhenReceived: Bool = false
         ) -> (data: Data?, response: HTTPURLResponse?, error: (any Error)?) {
             let delegate = Delegate(observer: observer)
             let configuration = URLSessionConfiguration.ephemeral
@@ -108,8 +108,15 @@ struct RubiconNetworkObserverTests {
             request.httpBody = body
             let task = session.dataTask(with: request)
             task.resume()
-            if let cancelAfter {
-                DispatchQueue.global().asyncAfter(deadline: .now() + cancelAfter) { task.cancel() }
+            if cancelWhenReceived {
+                // From this thread, once the server holds the request, so the task is in flight and no
+                // queued timer is involved.
+                let path = request.url?.path ?? ""
+                let deadline = Date().addingTimeInterval(5)
+                while Date() < deadline && !server.requests.contains(where: { $0.path == path }) {
+                    Thread.sleep(forTimeInterval: 0.01)
+                }
+                task.cancel()
             }
             _ = delegate.completed.wait(timeout: .now() + 15)
             session.finishTasksAndInvalidate()
@@ -179,9 +186,9 @@ struct RubiconNetworkObserverTests {
         let f = try Fixture()
         let refused = try #require(URL(string: "http://127.0.0.1:1/a"))
 
-        // The slow answers are bound to their paths, not queued: on the CI toolchain (Xcode 26.6) the
-        // queued second answer was taken by a request other than `/cancel`, which then got an immediate
-        // 200 from the empty queue and no `canceled`.
+        // The slow answers are bound to their paths, so a connection the test did not count cannot take
+        // one; the cancel is issued once the server holds the request. On the CI toolchain (Xcode 26.6)
+        // the cancelled call twice waited the full 3 s and got the 200.
         f.server.respond(to: "/slow", with: .init(status: 200, delayMillis: 3_000))
         f.server.respond(to: "/cancel", with: .init(status: 200, delayMillis: 3_000))
 
@@ -189,8 +196,11 @@ struct RubiconNetworkObserverTests {
         #expect(refusedResult.error != nil)
         let timedOut = f.call(f.observer(), path: "/slow", timeout: 0.5)
         #expect((timedOut.error as? URLError)?.code == .timedOut)
-        let cancelled = f.call(f.observer(), path: "/cancel", cancelAfter: 0.2)
-        #expect((cancelled.error as? URLError)?.code == .cancelled)
+        let started = Date()
+        let cancelled = f.call(f.observer(), path: "/cancel", cancelWhenReceived: true)
+        #expect(
+            (cancelled.error as? URLError)?.code == .cancelled,
+            "after \(Date().timeIntervalSince(started)) s; the server saw \(f.server.requests.map(\.path))")
 
         let errors = f.events.map { $0.properties["error"] }
         #expect(errors == [.string("connect"), .string("timeout"), .string("canceled")])

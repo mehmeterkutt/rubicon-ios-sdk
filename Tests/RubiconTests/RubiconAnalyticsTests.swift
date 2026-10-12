@@ -52,6 +52,11 @@ extension ProcessWideSuites {
                 RubiconAnalytics.make(configuration: config(configure: configure), bundle: bundle, storageRoot: root)
             }
 
+            func flush(_ analytics: any Analytics, sourceLocation: SourceLocation = #_sourceLocation) -> Bool {
+                FlushDiagnostics.flush(
+                    analytics, server: server, messages: { logger.messages }, sourceLocation: sourceLocation)
+            }
+
             func uploads(seconds: Double = 5) -> [TestHTTPServer.RecordedRequest] {
                 let deadline = Date().addingTimeInterval(seconds)
                 while Date() < deadline {
@@ -77,7 +82,7 @@ extension ProcessWideSuites {
 
             #expect(analytics is DefaultAnalytics)
             analytics.track("Opened")
-            #expect(RubiconCore.flushBlocking(analytics, timeoutMs: 10_000))
+            #expect(f.flush(analytics))
 
             let upload = try #require(f.uploads().first)
             #expect(upload.header("Authorization") == "Bearer rk_ios")
@@ -92,7 +97,7 @@ extension ProcessWideSuites {
             let f = try Fixture()
             let analytics = f.make()
             analytics.track("Opened")
-            #expect(RubiconCore.flushBlocking(analytics, timeoutMs: 10_000))
+            #expect(f.flush(analytics))
 
             let values = try f.root.resourceValues(forKeys: [.isExcludedFromBackupKey])
             #expect(values.isExcludedFromBackup == true)
