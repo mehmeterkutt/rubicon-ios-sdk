@@ -1,0 +1,3 @@
+swift.enum RubiconAnalytics: enum RubiconAnalytics
+swift.type.method RubiconAnalytics.make(configuration:): static func make(configuration: AnalyticsConfiguration) -> any Analytics
+swift.type.property RubiconAnalytics.version: static var version: String { get }

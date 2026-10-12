@@ -137,7 +137,8 @@ public types at the top level of the target.
 - Locked device (iOS Disk 1): on `willBecomeUnavailable` the writer syncs, closes its handles and
   stops draining; events wait in the channel; a read or write that fails with a permission error is
   "locked", not "unreadable"; on `didBecomeAvailable` the writer drains and, on the first
-  availability of the process, loads the stores. The uploader reads no batch while locked.
+  availability of the process, loads the stores. The uploader reads no batch while locked. The
+  platform's startup flag is advisory: the writer always tries to load first (log row 7.1).
 
 ## Storage and JSON
 

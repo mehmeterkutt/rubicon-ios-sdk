@@ -272,8 +272,13 @@ package final class Writer: @unchecked Sendable {
     }
 
     private func startUp() {
-        if !platform.lifecycleSource.isProtectedDataAvailable { lockedFlag.set() }
-        if !lockedFlag.isSet { loadAndOpen() }
+        // The platform's startup flag is advisory: the stores try to load, and a permission error is
+        // what makes the writer wait (iOS Disk 1). The simulator's test host reports the flag false
+        // and never posts the notification, so a flag-based lock would never open there.
+        if !platform.lifecycleSource.isProtectedDataAvailable {
+            log.debug { "Protected data is reported unavailable at startup; the stores decide" }
+        }
+        loadAndOpen()
         if !listenersAdded {
             listenersAdded = true
             // The network first: the context cache takes the network type from it.

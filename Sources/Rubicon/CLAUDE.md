@@ -43,6 +43,8 @@ collection, the network monitor, the HTTP transport's `URLSession`, `RubiconNetw
   asks the writer to persist the stores and waits at most one second; no upload.
 - Protected data (iOS Disk 1): `isProtectedDataAvailable` read on the main thread at startup;
   `protectedDataWillBecomeUnavailableNotification` and `DidBecomeAvailable` forwarded to the writer.
+  The startup flag is advisory: the writer tries to load and a permission error decides, since the
+  simulator's test host reports the flag false and never posts the notification (log row 7.1).
 - Install and update (iOS Lifecycle 4): on the first foreground, with the version record in
   `DeviceStore`. No record: `installTime` = creation date of the `Library` directory, `updateTime` =
   creation date of `Bundle.main.bundleURL`; within 60 s of each other -> `Application Installed`,
@@ -130,9 +132,10 @@ collection, the network monitor, the HTTP transport's `URLSession`, `RubiconNetw
 
 - `logging.logger = nil` -> `os.Logger(subsystem: "com.rubicon.analytics", category: "Rubicon")`,
   the only code in the SDK that may call `os.Logger` or `os_log`. Mapping: `error` -> `.error`,
-  `warn` -> `.notice`, `info` -> `.info`, `debug` -> `.debug`; the message is interpolated with
-  `privacy: .public`, which the content rule makes safe (iOS Logging 1). Logging is never compiled
-  out of release builds.
+  `warn` -> `.default` (the notice level), `info` -> `.info`, `debug` -> `.debug`; the message is
+  interpolated with `privacy: .public`, which the content rule makes safe (iOS Logging 1); an error
+  is named by domain and code, never its description. Logging is never compiled out of release
+  builds.
 
 ## Privacy manifest
 
