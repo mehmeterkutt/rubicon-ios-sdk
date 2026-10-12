@@ -169,6 +169,9 @@ A pull request that breaks one does not merge.
 - `TestHTTPServer` (POSIX sockets, D15 revised: `NWListener` failed to listen and to accept on the
   CI simulator) answers in script order across all connections; a test that scripts answers for
   more than one connection binds them to paths with `respond(to:with:)`.
+- A suite that holds a real socket or a real queue is nested under its target's serialized parent
+  (`RealWorldSuites` in the core tests, `ProcessWideSuites` in the Rubicon tests): run in parallel
+  on the three-core CI runner, such suites starved each other for tens of seconds.
 - Coverage gates (`check-coverage.sh`): 90 percent of lines in `RubiconCore`, 80 percent in `Rubicon`.
 - Anything touching upload, storage or identity gets one manual run in the demo app against its fake
   server, once the demo app uses the SDK (step 9.2).
