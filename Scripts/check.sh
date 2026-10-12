@@ -29,6 +29,9 @@ step "required-reason APIs"
 Scripts/check-required-reason-apis.sh --self-test
 Scripts/check-required-reason-apis.sh
 
+step "golden files"
+Scripts/refresh-golden.sh --check
+
 step "public API record"
 Scripts/api-diff.sh
 
