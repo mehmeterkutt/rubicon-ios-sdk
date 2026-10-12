@@ -23,13 +23,18 @@ final class UITestServer: @unchecked Sendable {
             headers.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }?.value
         }
 
-        /// The event names of a `/v1/batch` body, gzip or plain.
-        func eventNames() -> [String] {
+        /// The events of a `/v1/batch` body, gzip or plain.
+        func events() -> [[String: Any]] {
             let bytes = header("Content-Encoding") == "gzip" ? (try? UITestServer.gunzip(body)) ?? Data() : body
             guard let object = try? JSONSerialization.jsonObject(with: bytes) as? [String: Any],
                 let batch = object["batch"] as? [[String: Any]]
             else { return [] }
-            return batch.map { ($0["event"] as? String) ?? ($0["type"] as? String) ?? "?" }
+            return batch
+        }
+
+        /// The event names of a `/v1/batch` body.
+        func eventNames() -> [String] {
+            events().map { ($0["event"] as? String) ?? ($0["type"] as? String) ?? "?" }
         }
     }
 

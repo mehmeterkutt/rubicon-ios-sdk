@@ -6,7 +6,9 @@ import XCTest
 /// the fake network monitor, since a simulator in CI has no switchable network.
 @MainActor
 final class ScenarioUITests: XCTestCase {
-    private var server: UITestServer!
+    // `setUpWithError` and `tearDown` override nonisolated methods; the server is created and
+    // stopped there and used from the main-actor test methods.
+    private nonisolated(unsafe) var server: UITestServer!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -54,6 +56,13 @@ final class ScenarioUITests: XCTestCase {
         let names = uploads.flatMap { $0.eventNames() }
         XCTAssertEqual(names.filter { $0 == "Button Tapped" }.count, 3)
         XCTAssertTrue(names.contains("Application Opened"), "\(names)")
+        // The sample beforeSend tags app events with the client (step 8.2).
+        let tagged = uploads.flatMap { $0.events() }.filter { $0["event"] as? String == "Button Tapped" }
+        XCTAssertEqual(tagged.count, 3)
+        for event in tagged {
+            let client = (event["properties"] as? [String: Any])?["client"] as? String
+            XCTAssertTrue(client == "swift" || client == "objc", "\(String(describing: client))")
+        }
         XCTAssertEqual(uploads[0].header("Authorization"), "Bearer rk_consumer")
         XCTAssertTrue(
             waitForLabel(app, "sent", "sent \(names.count)"), "sent label \(label(app, "sent")) for \(names)")

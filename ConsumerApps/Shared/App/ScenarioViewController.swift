@@ -23,7 +23,11 @@ enum Scenario {
         config.flush.intervalMs = 600_000
         config.logging.sendDiagnostics = false
         config.logging.eventObserver = observer
-        return RubiconAnalytics.make(configuration: config)
+        config.logging.logger = SampleHooks.logger
+        config.beforeSend = [SampleHooks.beforeSend]
+        let analytics = RubiconAnalytics.make(configuration: config)
+        SendableChecks.exercise(analytics)
+        return analytics
     }
 
     /// Deletes `Application Support/rubicon`, so a launch starts as a fresh install.

@@ -24,6 +24,20 @@
             [ScenarioViewController.current applyUpdate:update];
         });
     };
+    // The hooks a client writes (step 8.2): a logger block and a beforeSend block that tags app
+    // events and drops debug events; a block that raises is caught by the wrapper (HOOK_THREW).
+    config.logging.logger = ^(RBNLogLevel level, NSString *message, NSError *error) {
+        NSLog(@"[rubicon %ld] %@ %@", (long)level, message, error ?: @"");
+    };
+    [config addBeforeSend:^RBNEvent *(RBNEvent *event) {
+        if (![event isKindOfClass:[RBNTrackEvent class]] || event.source != RBNEventSourceApp) return event;
+        RBNTrackEvent *track = (RBNTrackEvent *)event;
+        if ([track.name hasPrefix:@"debug_"]) return nil;
+        NSMutableDictionary *properties = [track.properties mutableCopy];
+        properties[@"client"] = @"objc";
+        track.properties = properties;
+        return track;
+    }];
     self.analytics = [RBNAnalytics makeWithConfiguration:config];
     return YES;
 }
