@@ -172,8 +172,10 @@ A pull request that breaks one does not merge.
   CI simulator) answers in script order across all connections; a test that scripts answers for
   more than one connection binds them to paths with `respond(to:with:)`.
 - A suite that holds a real socket or a real queue is nested under its target's serialized parent
-  (`RealWorldSuites` in the core tests, `ProcessWideSuites` in the Rubicon tests): run in parallel
-  on the three-core CI runner, such suites starved each other for tens of seconds.
+  (`RealWorldSuites` in the core tests, `ProcessWideSuites` in the Rubicon tests). A suite that
+  creates the process-wide instance also holds `InstanceLease` in its fixture, first stored property,
+  one fixture per test: `swift test` runs both test targets in one process, and a fixture's
+  `resetForTests` stops whatever instance the slot holds, including another target's.
 - Coverage gates (`check-coverage.sh`): 90 percent of lines in `RubiconCore`, 80 percent in `Rubicon`.
 - Anything touching upload, storage or identity gets one manual run in the demo app against its fake
   server, once the demo app uses the SDK (step 9.2).

@@ -17,6 +17,8 @@ extension ProcessWideSuites {
     @Suite("RubiconAnalytics", .serialized)
     struct RubiconAnalyticsTests {
         final class Fixture: @unchecked Sendable {
+            // First, so it is held before `resetForTests` below and released after the one in `deinit`.
+            private let lease = InstanceLease()
             let root = TestPlatform.temporaryDirectory().appendingPathComponent("rubicon", isDirectory: true)
             let server: TestHTTPServer
             let logger = RecordingLogger()
