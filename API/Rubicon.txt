@@ -1,3 +1,5 @@
 swift.enum RubiconAnalytics: enum RubiconAnalytics
+swift.protocol ScreenNamed: @MainActor protocol ScreenNamed
 swift.type.method RubiconAnalytics.make(configuration:): static func make(configuration: AnalyticsConfiguration) -> any Analytics
 swift.type.property RubiconAnalytics.version: static var version: String { get }
+swift.type.property ScreenNamed.screenName: @MainActor static var screenName: String { get }

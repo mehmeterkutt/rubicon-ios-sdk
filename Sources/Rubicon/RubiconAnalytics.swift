@@ -43,6 +43,10 @@ public enum RubiconAnalytics {
             }
             (platform.lifecycleSource as? ApplicationLifecycleSource)?.attach()
             (platform.contextProvider as? IOSContextProvider)?.attach()
+            // The one swizzle, only when screen views are configured (iOS Lifecycle 1).
+            if configuration.autocapture.enabled.contains(.screenViews) {
+                ScreenCapture.shared.install(capture: capture, lifecycle: platform.lifecycleSource)
+            }
         }
     }
 
