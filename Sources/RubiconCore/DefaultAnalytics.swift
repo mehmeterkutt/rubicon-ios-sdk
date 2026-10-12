@@ -138,6 +138,11 @@ package final class DefaultAnalytics: Analytics, AutomaticCapture, BackgroundFlu
 
     /// Asks for a flush and waits until nothing is pending or `timeoutMs` passed; `true` when
     /// everything was sent. For tests and shutdown only, never public (Public API 9).
+    /// What `flushBlocking` waits for, in words; for a test's failure report.
+    package var flushState: String {
+        "pending \(eventStore.pendingCount), writer idle \(writer.isIdle), uploader idle \(uploader.isIdle)"
+    }
+
     package func flushBlocking(timeoutMs: Int64) -> Bool {
         writer.flush()
         var polls = max(1, timeoutMs / Self.pollMillis)

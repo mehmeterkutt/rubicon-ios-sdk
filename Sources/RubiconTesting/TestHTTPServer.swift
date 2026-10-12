@@ -61,6 +61,8 @@ package final class TestHTTPServer: @unchecked Sendable {
         /// The open connections, shut down by `stop`; each serving thread closes its own.
         var connections: Set<Int32> = []
         var stopped = false
+        /// What happened on the wire, for a report: accepted, bytes, parsed, answered, closed.
+        var events: [String] = []
     }
 
     private let listening: Int32
@@ -69,6 +71,7 @@ package final class TestHTTPServer: @unchecked Sendable {
     // Guarded by `state`.
     private let state = Locked(State())
     private let requestArrived = DispatchSemaphore(value: 0)
+    private let born = Date()
     // Signalled once the accepting thread has closed the listening socket.
     private let acceptEnded = DispatchSemaphore(value: 0)
     package let port: UInt16
@@ -148,6 +151,14 @@ package final class TestHTTPServer: @unchecked Sendable {
     /// The requests received so far, oldest first.
     package var requests: [RecordedRequest] { state.current.requests }
 
+    /// The connection events so far, with seconds since the server started; for a failure report.
+    package var connectionEvents: [String] { state.current.events }
+
+    private func note(_ text: String) {
+        let at = String(format: "%.3f", Date().timeIntervalSince(born))
+        state.withLock { $0.events.append("\(at)s \(text)") }
+    }
+
     /// Waits until a request beyond those already returned by earlier calls has arrived.
     package func waitForRequest(timeoutSeconds: Double = 5) -> RecordedRequest? {
         guard requestArrived.wait(timeout: .now() + timeoutSeconds) == .success else { return nil }
@@ -216,6 +227,7 @@ package final class TestHTTPServer: @unchecked Sendable {
             return true
         }
         guard accepted else { return false }
+        note("accepted")
         Self.setOption(fd, SO_NOSIGPIPE)
         var timeout = timeval(tv_sec: 10, tv_usec: 0)
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
@@ -242,11 +254,15 @@ package final class TestHTTPServer: @unchecked Sendable {
         var parsed: RecordedRequest?
         while parsed == nil {
             let count = chunk.withUnsafeMutableBytes { recv(fd, $0.baseAddress, $0.count, 0) }
-            if count <= 0 { return }
+            if count <= 0 {
+                note("recv returned \(count) with errno \(errno) after \(buffer.count) bytes")
+                return
+            }
             buffer.append(contentsOf: chunk[0..<count])
             parsed = Self.parse(buffer)
         }
         guard let request = parsed else { return }
+        note("parsed \(request.method) \(request.path)")
         let response: Response = state.withLock { s in
             s.requests.append(request)
             if let fixed = s.fixed[request.path] { return fixed }
@@ -277,6 +293,7 @@ package final class TestHTTPServer: @unchecked Sendable {
             if sent <= 0 { return }
             offset += sent
         }
+        note("answered \(response.status) for \(request.path)")
         shutdown(fd, SHUT_WR)
         // Let the client read the whole answer before the socket closes.
         Thread.sleep(forTimeInterval: 0.05)
