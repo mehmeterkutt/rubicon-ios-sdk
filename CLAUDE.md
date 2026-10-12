@@ -135,6 +135,9 @@ A pull request that breaks one does not merge.
 - Uploads use the SDK's own `URLSession` behind the internal `HttpTransport`; never
   `URLSession.shared`, never the app's session (iOS HTTP 1).
 - No `#available` or `@available(iOS ...)` checks: every API used exists on iOS 15 (iOS Public API 2).
+  The test targets too: the local Xcode 27 builds for iOS 17 and up and does not report an iOS 16
+  API (the Swift Testing trait `.timeLimit`, `Duration`, `OSAllocatedUnfairLock`); only the Xcode
+  26.6 build in CI does.
   No `swift-docc-plugin`, no SwiftLint: tools come from the toolchain or Homebrew on the runner.
 - Test-only and tool-only additions are allowed but named in the pull request (so far: XcodeGen).
 
@@ -163,6 +166,9 @@ A pull request that breaks one does not merge.
   `Scripts/test-simulator.sh`; the consumer apps and the demo app cover what the simulator cannot.
 - No `sleep` and no real waiting in unit tests: time is virtual through the injected `Scheduler`.
   Every file test uses its own temporary directory; suites run in parallel, nothing is global.
+- `TestHTTPServer` answers in script order across all connections; a test that scripts answers for
+  more than one connection binds them to paths with `respond(to:with:)`, because `URLSession` may
+  open a connection the test did not count (seen on Xcode 26.6 after a timed-out call).
 - Coverage gates (`check-coverage.sh`): 90 percent of lines in `RubiconCore`, 80 percent in `Rubicon`.
 - Anything touching upload, storage or identity gets one manual run in the demo app against its fake
   server, once the demo app uses the SDK (step 9.2).

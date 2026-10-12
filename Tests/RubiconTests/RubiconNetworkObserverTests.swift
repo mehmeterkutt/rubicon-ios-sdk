@@ -179,12 +179,16 @@ struct RubiconNetworkObserverTests {
         let f = try Fixture()
         let refused = try #require(URL(string: "http://127.0.0.1:1/a"))
 
+        // The slow answers are bound to their paths, not queued: on the CI toolchain (Xcode 26.6) the
+        // queued second answer was taken by a request other than `/cancel`, which then got an immediate
+        // 200 from the empty queue and no `canceled`.
+        f.server.respond(to: "/slow", with: .init(status: 200, delayMillis: 3_000))
+        f.server.respond(to: "/cancel", with: .init(status: 200, delayMillis: 3_000))
+
         let refusedResult = f.call(f.observer(), url: refused)
         #expect(refusedResult.error != nil)
-        f.server.enqueue(.init(status: 200, delayMillis: 3_000))
         let timedOut = f.call(f.observer(), path: "/slow", timeout: 0.5)
         #expect((timedOut.error as? URLError)?.code == .timedOut)
-        f.server.enqueue(.init(status: 200, delayMillis: 3_000))
         let cancelled = f.call(f.observer(), path: "/cancel", cancelAfter: 0.2)
         #expect((cancelled.error as? URLError)?.code == .cancelled)
 

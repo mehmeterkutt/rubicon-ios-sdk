@@ -295,9 +295,10 @@ struct CoreIntegrationTests {
     }
 
     /// About a minute of real queues and HTTP: nightly and on demand (`RUBICON_STRESS=1`), not in
-    /// every `check.sh` run (plan section 15, step 6.7).
+    /// every `check.sh` run (plan section 15, step 6.7). No `.timeLimit` trait: it needs iOS 16 and
+    /// the package deploys to iOS 15; the nightly job's `timeout-minutes` bounds the run instead.
     @Test(
-        "16 threads times 5000 mixed calls", .timeLimit(.minutes(5)),
+        "16 threads times 5000 mixed calls",
         .enabled(if: ProcessInfo.processInfo.environment["RUBICON_STRESS"] != nil))
     func stress() throws {
         let f = try Fixture()
