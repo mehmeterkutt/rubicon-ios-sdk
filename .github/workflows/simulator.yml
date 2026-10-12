@@ -29,6 +29,10 @@ env:
 jobs:
   simulator:
     name: simulator and consumer apps
+    # The lane costs about twenty macOS minutes a run. While a pull request iterates on something the
+    # macOS lane can show by itself, the label `skip-simulator` on the pull request skips it; the
+    # label comes off before the merge so the lane runs once on the final head.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-simulator') }}
     runs-on: macos-26
     timeout-minutes: 45
     steps:

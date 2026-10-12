@@ -52,6 +52,8 @@ RUBICON_STRESS=1 swift test --filter CoreIntegrationTests/stress   # the stress 
 Local toolchain is Xcode 27 (Swift 6.4); the release toolchain is Xcode 26.6 on the `macos-26`
 runner, the last that builds for the iOS 15 floor. CI is the gate: a build that passes locally and
 fails there is fixed, not waved through. Keep the sources inside `swift-tools-version` 6.0.
+The simulator lane costs about twenty macOS minutes a run; while a pull request iterates on what the
+macOS lane shows by itself, the label `skip-simulator` skips it. The label comes off before the merge.
 
 ## Non-negotiables
 
