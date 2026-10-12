@@ -47,11 +47,6 @@ extension ProcessWideSuites {
                 RBNAnalytics.make(configuration: configuration(configure: configure), bundle: .main, storageRoot: root)
             }
 
-            func flush(_ analytics: any Analytics, sourceLocation: SourceLocation = #_sourceLocation) -> Bool {
-                FlushDiagnostics.flush(
-                    analytics, server: server, messages: { lines.current.map(\.1) }, sourceLocation: sourceLocation)
-            }
-
             func messages(containing code: Code) -> [String] {
                 lines.current.map(\.1).filter { $0.contains(code.rawValue) }
             }
@@ -213,7 +208,7 @@ extension ProcessWideSuites {
             }
 
             analytics.trackEvent("Purchase Completed", properties: ["amount": 49.9, "secret": "x"])
-            #expect(f.flush(analytics.analytics))
+            #expect(RubiconCore.flushBlocking(analytics.analytics, timeoutMs: 10_000))
 
             let event = try #require(try f.event(named: "Order Placed"))
             let properties = try #require(event["properties"] as? [String: Any])
@@ -256,7 +251,7 @@ extension ProcessWideSuites {
 
             analytics.trackScreen("Checkout", properties: ["step": 2])
             analytics.identifyUser("user-1", traits: ["email": "a@b.c"])
-            #expect(f.flush(analytics.analytics))
+            #expect(RubiconCore.flushBlocking(analytics.analytics, timeoutMs: 10_000))
 
             let all = try f.uploads().flatMap(f.events)
             let screen = try #require(all.first { $0["type"] as? String == "screen" })
@@ -283,7 +278,7 @@ extension ProcessWideSuites {
 
             analytics.trackEvent("Kept")
             analytics.trackEvent("Dropped")
-            #expect(f.flush(analytics.analytics))
+            #expect(RubiconCore.flushBlocking(analytics.analytics, timeoutMs: 10_000))
             #expect(f.wait { f.updates.current.contains { $0.kind == .sent } })
 
             let updates = f.updates.current
@@ -321,7 +316,7 @@ extension ProcessWideSuites {
             analytics.trackEvent("Boom")
             analytics.trackEvent("Boom")
             analytics.trackEvent("Fine")
-            #expect(f.flush(analytics.analytics))
+            #expect(RubiconCore.flushBlocking(analytics.analytics, timeoutMs: 10_000))
 
             let names = try f.uploads().flatMap(f.events).compactMap { $0["event"] as? String }
             #expect(names.contains("Fine"))
@@ -351,7 +346,7 @@ extension ProcessWideSuites {
             // The INFO line of `make` already raised, before the instance existed.
             #expect(calls.current == 1)
             analytics.trackEvent("After")
-            #expect(f.flush(analytics.analytics))
+            #expect(RubiconCore.flushBlocking(analytics.analytics, timeoutMs: 10_000))
             #expect(calls.current == 1)
         }
 
@@ -368,7 +363,7 @@ extension ProcessWideSuites {
 
             analytics.trackEvent("One")
             analytics.trackEvent("Two")
-            #expect(f.flush(analytics.analytics))
+            #expect(RubiconCore.flushBlocking(analytics.analytics, timeoutMs: 10_000))
 
             #expect(f.messages(containing: .observerThrew).count == 1)
             #expect(calls.current == 1)
@@ -401,7 +396,7 @@ extension ProcessWideSuites {
             activity.webpageURL = URL(string: "https://example.com/offer/2")
             analytics.trackDeepLink(withActivity: activity)
             analytics.flush()
-            #expect(f.flush(analytics.analytics))
+            #expect(RubiconCore.flushBlocking(analytics.analytics, timeoutMs: 10_000))
 
             let all = try f.uploads().flatMap(f.events)
             let plain = try #require(all.first { $0["event"] as? String == "Plain" })

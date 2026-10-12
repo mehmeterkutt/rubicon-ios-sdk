@@ -35,11 +35,7 @@ extension RealWorldSuites {
             }
 
             func config(_ configure: (inout AnalyticsConfiguration) -> Void = { _ in }) -> AnalyticsConfiguration {
-                IntegrationSupport.config(server) { config in
-                    // Every line, so a flush report (below) names the failure kind and the waits.
-                    config.logging.level = .debug
-                    configure(&config)
-                }
+                IntegrationSupport.config(server, configure: configure)
             }
 
             func create(
@@ -51,19 +47,8 @@ extension RealWorldSuites {
                     configuration: config(configure), platform: platform(network: network), onCreated: onCreated)
             }
 
-            /// A flush that is expected to finish: when it does not, the issue carries the SDK's log
-            /// lines and the server's paths (`FlushReport`). `report: false` for a flush expected to fail.
-            func flush(
-                _ analytics: any Analytics, _ timeoutMs: Int64 = 10_000, report: Bool = true,
-                sourceLocation: SourceLocation = #_sourceLocation
-            ) -> Bool {
-                guard report else { return RubiconCore.flushBlocking(analytics, timeoutMs: timeoutMs) }
-                guard
-                    let text = FlushReport.flush(
-                        analytics, server: server, messages: { logger.messages }, timeoutMs: timeoutMs)
-                else { return true }
-                Issue.record(Comment(rawValue: text), sourceLocation: sourceLocation)
-                return false
+            func flush(_ analytics: any Analytics, _ timeoutMs: Int64 = 10_000) -> Bool {
+                RubiconCore.flushBlocking(analytics, timeoutMs: timeoutMs)
             }
 
             func uploads(_ count: Int, seconds: Double = 5) -> [TestHTTPServer.RecordedRequest] {
@@ -162,7 +147,7 @@ extension RealWorldSuites {
             let analytics = f.create(network: network)
 
             analytics.track("Offline")
-            #expect(!f.flush(analytics, 500, report: false))
+            #expect(!f.flush(analytics, 500))
             #expect(IntegrationSupport.uploads(f.server).isEmpty)
 
             network.setConnected(true)
@@ -194,7 +179,7 @@ extension RealWorldSuites {
             let first = f.create(network: offline)
             first.track("Left", properties: ["n": 1])
             first.track("Left", properties: ["n": 2])
-            #expect(!f.flush(first, 500, report: false))
+            #expect(!f.flush(first, 500))
             let firstDeviceId = first.deviceId
             RubiconCore.resetForTests()
 
@@ -272,14 +257,14 @@ extension RealWorldSuites {
             let analytics = f.create()
             analytics.optOut()
             analytics.track("Hidden")
-            _ = f.flush(analytics, 1_000, report: false)
+            _ = f.flush(analytics, 1_000)
             RubiconCore.resetForTests()
 
             let restarted = f.create()
 
             #expect(restarted.isOptedOut)
             restarted.track("Still hidden")
-            _ = f.flush(restarted, 1_000, report: false)
+            _ = f.flush(restarted, 1_000)
             #expect(IntegrationSupport.uploads(f.server).isEmpty)
         }
 
