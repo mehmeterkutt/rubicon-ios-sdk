@@ -39,6 +39,7 @@ public enum RubiconAnalytics {
         return RubiconCore.create(configuration: configuration, platform: platform) { _ in
             // On the main thread when called from launch (iOS Session 1); otherwise posted there.
             (platform.lifecycleSource as? ApplicationLifecycleSource)?.attach()
+            (platform.contextProvider as? IOSContextProvider)?.attach()
         }
     }
 

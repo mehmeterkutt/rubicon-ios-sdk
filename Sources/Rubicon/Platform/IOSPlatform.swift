@@ -18,10 +18,12 @@ enum IOSPlatform {
     }
 
     static func make(bundle: Bundle, processFacts: IOSProcessFacts, storageRoot: URL? = nil) -> Platform {
-        Platform(
+        // One path monitor for the uploader, the retry wait and the context (iOS Retry 1).
+        let network = PathNetworkMonitor()
+        return Platform(
             clock: SystemClock(), elapsedClock: UptimeClock(), random: SystemRandom(), scheduler: GCDScheduler(),
-            networkMonitor: PathNetworkMonitor(), transportFactory: URLSessionTransport.factory,
-            contextProvider: StaticContextProvider(), processFacts: processFacts,
+            networkMonitor: network, transportFactory: URLSessionTransport.factory,
+            contextProvider: IOSContextProvider(bundle: bundle, network: network), processFacts: processFacts,
             lifecycleSource: ApplicationLifecycleSource(), logger: OSLogSink.shared.rubiconLogger,
             storageRoot: storageRoot ?? Self.storageRoot(), fileSystem: PosixFileSystem())
     }

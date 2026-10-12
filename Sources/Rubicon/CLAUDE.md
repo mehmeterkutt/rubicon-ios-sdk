@@ -75,9 +75,10 @@ collection, the network monitor, the HTTP transport's `URLSession`, `RubiconNetw
 
 ## Context collection
 
-- `ContextProvider` is implemented here; the core's `ContextStep` adds the values. Nothing is
-  collected in the factory or on the main thread; static values once, lazily, on the worker
-  (Context 1).
+- `ContextProvider` is implemented here; the core's pipeline adds the values. Nothing touches the
+  disk in the factory; the bundle values and the `uname` model are read once on the worker, and
+  the UIKit values (OS version, idiom, `nativeBounds`), main-actor isolated in Swift 6, once on the
+  main thread by `attach()` at creation: memory reads only (Context 1, log row 7.3).
 - Sources (iOS Context 1): `app.name` `CFBundleName` else `CFBundleDisplayName`; `app.version`
   `CFBundleShortVersionString`; `app.build` `CFBundleVersion`; `app.namespace` `bundleIdentifier`;
   `device.manufacturer` `"Apple"`; `device.model` `utsname.machine`; `device.type` from
