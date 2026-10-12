@@ -9,7 +9,7 @@ import Foundation
 /// hook's own (iOS Public API 6).
 // Every stored property is a constant; the components keep their own state behind locks or on a
 // worker queue.
-package final class DefaultAnalytics: Analytics, AutomaticCapture, @unchecked Sendable {
+package final class DefaultAnalytics: Analytics, AutomaticCapture, BackgroundFlushControl, @unchecked Sendable {
     private let code: ConfigSnapshot
     private let platform: Platform
     package let log: Log
@@ -123,6 +123,16 @@ package final class DefaultAnalytics: Analytics, AutomaticCapture, @unchecked Se
     package var sdkHost: String { code.hostURL.host ?? "" }
 
     package var debug: Bool { code.debug }
+
+    // MARK: - BackgroundFlushControl
+
+    package func beginBackgroundFlush(onDone: @escaping @Sendable () -> Void) {
+        uploader.beginBackgroundFlush(onDone: onDone)
+    }
+
+    package func expireBackgroundFlush() {
+        uploader.expireBackgroundFlush()
+    }
 
     // MARK: - Tests and shutdown
 

@@ -242,7 +242,9 @@ struct PlatformPartsTests {
             await MainActor.run {}
             center.post(name: UIApplication.willTerminateNotification, object: nil)
 
-            #expect(events.current == [.willTerminate])
+            // The registration on the main thread may report the host's foreground first (7.4).
+            #expect(events.current.last == .willTerminate)
+            #expect(events.current.filter { $0 == .willTerminate }.count == 1)
         }
     #endif
 }

@@ -36,8 +36,11 @@ public enum RubiconAnalytics {
             return NoOpAnalytics()
         }
         let platform = IOSPlatform.make(bundle: bundle, processFacts: processFacts, storageRoot: storageRoot)
-        return RubiconCore.create(configuration: configuration, platform: platform) { _ in
+        return RubiconCore.create(configuration: configuration, platform: platform) { capture in
             // On the main thread when called from launch (iOS Session 1); otherwise posted there.
+            if let control = capture as? BackgroundFlushControl {
+                BackgroundFlushCoordinator(control: control, lifecycle: platform.lifecycleSource).attach()
+            }
             (platform.lifecycleSource as? ApplicationLifecycleSource)?.attach()
             (platform.contextProvider as? IOSContextProvider)?.attach()
         }

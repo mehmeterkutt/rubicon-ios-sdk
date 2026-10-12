@@ -13,8 +13,9 @@ import RubiconCore
 ///   the main thread; off the main thread it is assumed available, and a locked file then shows up
 ///   as a permission error the stores treat as locked;
 /// - `willTerminate`, a rare final chance to write the stores;
-/// - the foreground pair, `willEnterForeground` and `didEnterBackground`, and the startup
-///   `applicationState` read (step 7.4).
+/// - the foreground pair, `willEnterForeground` and `didEnterBackground`, never the `active` pair,
+///   with `applicationState` read at startup on the main thread: `.active` or `.inactive` is the
+///   foreground at once, `.background` waits (iOS Session 1).
 ///
 /// `attach()` is called by the factory for a new instance; `start()` is the writer's and does
 /// nothing here, since the observers are registered on the main thread by `attach()`.
@@ -75,6 +76,12 @@ final class ApplicationLifecycleSource: LifecycleSource, @unchecked Sendable {
         else { return }
         #if canImport(UIKit)
             readInitialState()
+            observe(UIApplication.willEnterForegroundNotification) { [weak self] in
+                self?.change(.foreground) { $0.foreground = true }
+            }
+            observe(UIApplication.didEnterBackgroundNotification) { [weak self] in
+                self?.change(.background) { $0.foreground = false }
+            }
             observe(UIApplication.protectedDataWillBecomeUnavailableNotification) { [weak self] in
                 self?.change(.protectedDataWillBecomeUnavailable) { $0.protectedData = false }
             }
@@ -90,11 +97,24 @@ final class ApplicationLifecycleSource: LifecycleSource, @unchecked Sendable {
     #if canImport(UIKit)
         // On the main thread, in an app: `UIApplication.shared` is unavailable in an extension, where
         // the factory never gets here (iOS Queue 2).
+        // The startup read of iOS Session 1: `.active` or `.inactive` is the foreground, reported at
+        // once; `.background` waits for the first `willEnterForeground`. Off the main thread nothing
+        // is read and the app is assumed to be in the background until a notification arrives.
         private func readInitialState() {
             guard Thread.isMainThread, !Bundle.main.bundlePath.hasSuffix(".appex") else { return }
             // `register` runs on the main thread (checked above), which is what the actor requires.
-            let available = MainActor.assumeIsolated { UIApplication.shared.isProtectedDataAvailable }
+            let (foreground, available) = MainActor.assumeIsolated {
+                (
+                    Self.isForeground(UIApplication.shared.applicationState),
+                    UIApplication.shared.isProtectedDataAvailable
+                )
+            }
             state.withLock { $0.protectedData = available }
+            if foreground { change(.foreground) { $0.foreground = true } }
+        }
+
+        static func isForeground(_ applicationState: UIApplication.State) -> Bool {
+            applicationState != .background
         }
 
         private func observe(_ name: Notification.Name, _ handler: @escaping @Sendable () -> Void) {
