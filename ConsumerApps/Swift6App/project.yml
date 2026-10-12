@@ -16,6 +16,7 @@ targets:
     dependencies:
       - package: Rubicon
         product: Rubicon
+      - target: Swift6AppWidget
     info:
       path: Info.plist
       properties:
@@ -33,6 +34,31 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.rubicon.analytics.consumer.swift6app
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+  # The app extension of step 8.3: a widget that creates the SDK and gets the no-op instance.
+  Swift6AppWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources: [Widget]
+    dependencies:
+      - package: Rubicon
+        product: Rubicon
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Rubicon probe
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rubicon.analytics.consumer.swift6app.widget
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
@@ -59,6 +85,7 @@ schemes:
     build:
       targets:
         Swift6App: all
+        Swift6AppWidget: all
         Swift6AppUITests: [test]
     run:
       config: Debug

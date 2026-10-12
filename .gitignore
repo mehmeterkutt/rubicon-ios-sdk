@@ -12,3 +12,4 @@ DerivedData/
 Package.resolved
 .idea/
 /ConsumerApps/*/Info.plist
+/ConsumerApps/*/Widget/Info.plist
