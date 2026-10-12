@@ -26,6 +26,7 @@ Scripts/check-source-rules.sh --self-test
 Scripts/check-source-rules.sh
 
 step "required-reason APIs"
+Scripts/check-required-reason-apis.sh --self-test
 Scripts/check-required-reason-apis.sh
 
 step "public API record"

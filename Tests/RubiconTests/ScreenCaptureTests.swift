@@ -42,7 +42,11 @@ import Testing
 
             let test = TestPlatform()
             let lifecycle = FakeLifecycleSource(foreground: true)
-            let window = UIWindow(frame: UIScreen.main.bounds)
+            // One window for the whole suite: replacing its root controller releases the previous
+            // controller here, on the main thread. A window per test instance was released wherever
+            // Swift Testing dropped the instance, and UIKit then crashed in a later layout pass.
+            static let window = UIWindow(frame: UIScreen.main.bounds)
+            var window: UIWindow { Self.window }
 
             func capture() -> RecordingCapture {
                 let capture = RecordingCapture(log: test.log())
