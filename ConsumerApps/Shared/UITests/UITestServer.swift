@@ -1,11 +1,10 @@
 import Foundation
-import Network
 import zlib
 
 /// The UI test runner's HTTP server (step 8.1): the counterpart of the package's `TestHTTPServer`,
 /// repeated here because a UI test bundle links products, not package targets. It lives in the
 /// runner process, so it outlives the app under test: a batch the first launch stored arrives here
-/// after the second launch. One connection at a time, scripted answers per path, every request kept.
+/// after the second launch. Scripted answers per path, every request kept.
 final class UITestServer: @unchecked Sendable {
     struct Response {
         var status = 200
@@ -38,43 +37,65 @@ final class UITestServer: @unchecked Sendable {
         }
     }
 
-    private let listener: NWListener
-    private let queue = DispatchQueue(label: "com.rubicon.analytics.uitestserver")
+    private let listening: Int32
+    // A byte written here ends the accepting thread; `accept` cannot be woken any other way.
+    private let wake: (read: Int32, write: Int32)
     private let lock = NSLock()
     private var fixed: [String: Response] = [:]
     private var recorded: [Request] = []
-    private var connections: [NWConnection] = []
+    private var connections: Set<Int32> = []
+    private var stopped = false
+    // Signalled once the accepting thread has closed the listening socket.
+    private let acceptEnded = DispatchSemaphore(value: 0)
     let port: UInt16
 
+    /// Listens on an ephemeral loopback port with POSIX sockets, as the package's server does: the
+    /// `NWListener` version did not become ready or accept connections on the CI simulator.
     init() throws {
-        let parameters = NWParameters.tcp
-        parameters.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: .any)
-        parameters.allowLocalEndpointReuse = true
-        let listener = try NWListener(using: parameters)
-        let ready = DispatchSemaphore(value: 0)
-        let box = PortBox()
-        listener.stateUpdateHandler = { state in
-            switch state {
-            case .ready:
-                box.port = listener.port?.rawValue
-                ready.signal()
-            case .failed, .cancelled:
-                ready.signal()
-            default:
-                break
-            }
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        guard fd >= 0 else { throw Self.error("socket", errno) }
+        Self.setOption(fd, SO_REUSEADDR)
+        Self.setOption(fd, SO_NOSIGPIPE)
+        var address = sockaddr_in()
+        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = 0
+        address.sin_addr.s_addr = UInt32(0x7F00_0001).bigEndian
+        let length = socklen_t(MemoryLayout<sockaddr_in>.size)
+        let bound = withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, length) }
         }
+        guard bound == 0, listen(fd, 16) == 0 else {
+            let code = errno
+            close(fd)
+            throw Self.error("bind or listen", code)
+        }
+        var assigned = sockaddr_in()
+        var assignedLength = length
+        let named = withUnsafeMutablePointer(to: &assigned) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(fd, $0, &assignedLength) }
+        }
+        guard named == 0 else {
+            let code = errno
+            close(fd)
+            throw Self.error("getsockname", code)
+        }
+        var ends: [Int32] = [-1, -1]
+        guard pipe(&ends) == 0 else {
+            let code = errno
+            close(fd)
+            throw Self.error("pipe", code)
+        }
+        listening = fd
+        wake = (ends[0], ends[1])
+        port = UInt16(bigEndian: assigned.sin_port)
         let owner = WeakBox()
-        listener.newConnectionHandler = { connection in owner.server?.accept(connection) }
-        listener.start(queue: queue)
-        _ = ready.wait(timeout: .now() + 5)
-        guard let port = box.port else {
-            listener.cancel()
-            throw NSError(domain: "UITestServer", code: 1, userInfo: [NSLocalizedDescriptionKey: "listener not ready"])
-        }
-        self.listener = listener
-        self.port = port
         owner.server = self
+        let thread = Thread { [acceptEnded, wake] in
+            Self.acceptLoop(fd, wake: wake, owner: owner, ended: acceptEnded)
+        }
+        thread.name = "com.rubicon.analytics.uitestserver.accept"
+        thread.start()
     }
 
     /// The `host` setting of the SDK.
@@ -107,41 +128,122 @@ final class UITestServer: @unchecked Sendable {
         return uploads
     }
 
+    /// Stops accepting and shuts every open connection; the threads close their own descriptors.
     func stop() {
-        listener.cancel()
         lock.lock()
-        for connection in connections { connection.cancel() }
-        connections = []
+        let first = !stopped
+        let open = connections
+        stopped = true
         lock.unlock()
+        guard first else { return }
+        var byte: UInt8 = 1
+        _ = write(wake.write, &byte, 1)
+        for fd in open { shutdown(fd, SHUT_RDWR) }
+        _ = acceptEnded.wait(timeout: .now() + 2)
     }
 
     deinit { stop() }
 
-    private func accept(_ connection: NWConnection) {
-        lock.lock()
-        connections.append(connection)
-        lock.unlock()
-        connection.start(queue: queue)
-        receive(connection, buffer: Data())
-    }
-
-    private func receive(_ connection: NWConnection, buffer: Data) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) {
-            [weak self] data, _, isComplete, error in
-            guard let self else { return }
-            var buffer = buffer
-            if let data { buffer.append(data) }
-            if let request = Self.parse(buffer) {
-                self.answer(connection, request)
+    private static func acceptLoop(
+        _ listening: Int32, wake: (read: Int32, write: Int32), owner: WeakBox, ended: DispatchSemaphore
+    ) {
+        defer {
+            close(listening)
+            close(wake.read)
+            close(wake.write)
+            ended.signal()
+        }
+        var fds = [
+            pollfd(fd: listening, events: Int16(POLLIN), revents: 0),
+            pollfd(fd: wake.read, events: Int16(POLLIN), revents: 0),
+        ]
+        while true {
+            let ready = poll(&fds, 2, -1)
+            if ready < 0 {
+                if errno == EINTR { continue }
                 return
             }
-            if isComplete || error != nil {
-                connection.cancel()
+            if fds[1].revents != 0 { return }
+            guard fds[0].revents != 0 else { continue }
+            let client = accept(listening, nil, nil)
+            if client < 0 {
+                if errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK { continue }
                 return
             }
-            self.receive(connection, buffer: buffer)
+            guard let server = owner.server, server.adopt(client) else {
+                close(client)
+                return
+            }
         }
     }
+
+    private func adopt(_ fd: Int32) -> Bool {
+        lock.lock()
+        let accepted = !stopped
+        if accepted { connections.insert(fd) }
+        lock.unlock()
+        guard accepted else { return false }
+        Self.setOption(fd, SO_NOSIGPIPE)
+        var timeout = timeval(tv_sec: 10, tv_usec: 0)
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
+        let owner = WeakBox()
+        owner.server = self
+        let thread = Thread {
+            if let server = owner.server {
+                server.serve(fd)
+            } else {
+                close(fd)
+            }
+        }
+        thread.name = "com.rubicon.analytics.uitestserver.connection"
+        thread.start()
+        return true
+    }
+
+    private func serve(_ fd: Int32) {
+        defer {
+            lock.lock()
+            connections.remove(fd)
+            lock.unlock()
+            close(fd)
+        }
+        var buffer = Data()
+        var chunk = [UInt8](repeating: 0, count: 64 * 1024)
+        var parsed: Request?
+        while parsed == nil {
+            let count = chunk.withUnsafeMutableBytes { recv(fd, $0.baseAddress, $0.count, 0) }
+            if count <= 0 { return }
+            buffer.append(contentsOf: chunk[0..<count])
+            parsed = Self.parse(buffer)
+        }
+        guard let request = parsed else { return }
+        lock.lock()
+        recorded.append(request)
+        let response = fixed[request.path] ?? Response()
+        lock.unlock()
+        if response.delaySeconds > 0 { Thread.sleep(forTimeInterval: response.delaySeconds) }
+        lock.lock()
+        let gone = stopped
+        lock.unlock()
+        if gone { return }
+        let head =
+            "HTTP/1.1 \(response.status) Status\r\nContent-Length: \(response.body.count)\r\nConnection: close\r\n\r\n"
+        var data = Data(head.utf8)
+        data.append(response.body)
+        var offset = 0
+        while offset < data.count {
+            let sent = data.withUnsafeBytes { raw -> Int in
+                guard let base = raw.baseAddress else { return -1 }
+                return send(fd, base + offset, data.count - offset, 0)
+            }
+            if sent <= 0 { return }
+            offset += sent
+        }
+        shutdown(fd, SHUT_WR)
+        Thread.sleep(forTimeInterval: 0.05)
+    }
+
+    private static let headerEnd = Data("\r\n\r\n".utf8)
 
     private static func parse(_ buffer: Data) -> Request? {
         guard let range = buffer.range(of: Data("\r\n\r\n".utf8)) else { return nil }
@@ -164,28 +266,15 @@ final class UITestServer: @unchecked Sendable {
             body: Data(buffer[bodyStart..<(bodyStart + length)]))
     }
 
-    private func answer(_ connection: NWConnection, _ request: Request) {
-        lock.lock()
-        recorded.append(request)
-        let response = fixed[request.path] ?? Response()
-        lock.unlock()
-        let send: @Sendable () -> Void = { [queue] in
-            var head =
-                "HTTP/1.1 \(response.status) Status\r\nContent-Length: \(response.body.count)\r\nConnection: close\r\n\r\n"
-            head += ""
-            var data = Data(head.utf8)
-            data.append(response.body)
-            connection.send(
-                content: data,
-                completion: .contentProcessed { _ in
-                    queue.asyncAfter(deadline: .now() + .milliseconds(50)) { connection.cancel() }
-                })
-        }
-        if response.delaySeconds > 0 {
-            queue.asyncAfter(deadline: .now() + response.delaySeconds, execute: send)
-        } else {
-            send()
-        }
+    private static func setOption(_ fd: Int32, _ option: Int32) {
+        var one: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, option, &one, socklen_t(MemoryLayout<Int32>.size))
+    }
+
+    private static func error(_ call: String, _ code: Int32) -> NSError {
+        NSError(
+            domain: "UITestServer", code: Int(code),
+            userInfo: [NSLocalizedDescriptionKey: "\(call) failed with errno \(code)"])
     }
 
     /// `inflateInit2_` with the gzip window, as the package's test helper does.
@@ -215,10 +304,6 @@ final class UITestServer: @unchecked Sendable {
         }
         guard status == Z_STREAM_END else { throw NSError(domain: "gzip", code: Int(status)) }
         return output
-    }
-
-    private final class PortBox: @unchecked Sendable {
-        var port: UInt16?
     }
 
     private final class WeakBox: @unchecked Sendable {

@@ -92,7 +92,7 @@ swift.method RBNContextConfiguration.enable(_:): @objc func enable(_ field: RBNC
 swift.method RBNContextConfiguration.isDisabled(_:): @objc func isDisabled(_ field: RBNContextField) -> Bool
 swift.method RBNNetworkObserver.urlSession(_:task:didCompleteWithError:): @objc(URLSession:task:didCompleteWithError:) func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?)
 swift.method RBNNetworkObserver.urlSession(_:task:didFinishCollecting:): @objc(URLSession:task:didFinishCollectingMetrics:) func urlSession(_ session: URLSession, task: URLSessionTask, didFinishCollecting metrics: URLSessionTaskMetrics)
-swift.property RBNAnalytics.analytics: let analytics: any Analytics
+swift.property RBNAnalytics.analytics: let analytics: Analytics
 swift.property RBNAnalytics.deviceId: @objc var deviceId: String { get }
 swift.property RBNAnalytics.isOptedOut: @objc var isOptedOut: Bool { get }
 swift.property RBNConfiguration.apiKey: @objc var apiKey: String { get }

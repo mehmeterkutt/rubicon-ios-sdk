@@ -40,6 +40,10 @@ for s in g.get("symbols", []):
     # here and the record reads the same under both.
     if s["kind"]["identifier"] == "swift.typealias":
         decl = re.sub(r"\b_ [A-Za-z_][A-Za-z0-9_]*: ", "", decl)
+    # They also disagree on existentials: Xcode 27 spells `(any Error)?` where Xcode 26.6 spells
+    # `Error?` for an `@objc` method. The `any` is dropped everywhere, which changes no API.
+    decl = re.sub(r"\(any ([^()]+)\)", r"\1", decl)
+    decl = re.sub(r"\bany ", "", decl)
     path = ".".join(s["pathComponents"])
     lines.append(f"{s['kind']['identifier']} {path}: {decl}")
 sys.stdout.write("".join(line + "\n" for line in sorted(set(lines))))

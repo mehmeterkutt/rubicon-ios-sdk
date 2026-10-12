@@ -166,9 +166,9 @@ A pull request that breaks one does not merge.
   `Scripts/test-simulator.sh`; the consumer apps and the demo app cover what the simulator cannot.
 - No `sleep` and no real waiting in unit tests: time is virtual through the injected `Scheduler`.
   Every file test uses its own temporary directory; suites run in parallel, nothing is global.
-- `TestHTTPServer` answers in script order across all connections; a test that scripts answers for
-  more than one connection binds them to paths with `respond(to:with:)`, because `URLSession` may
-  open a connection the test did not count (seen on Xcode 26.6 after a timed-out call).
+- `TestHTTPServer` (POSIX sockets, D15 revised: `NWListener` failed to listen and to accept on the
+  CI simulator) answers in script order across all connections; a test that scripts answers for
+  more than one connection binds them to paths with `respond(to:with:)`.
 - Coverage gates (`check-coverage.sh`): 90 percent of lines in `RubiconCore`, 80 percent in `Rubicon`.
 - Anything touching upload, storage or identity gets one manual run in the demo app against its fake
   server, once the demo app uses the SDK (step 9.2).
