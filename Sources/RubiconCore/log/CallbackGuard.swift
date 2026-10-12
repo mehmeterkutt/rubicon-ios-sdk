@@ -62,15 +62,25 @@ package final class CallbackGuard: @unchecked Sendable {
     package func reportLoggerFailure(_ error: any Error) {
         if loggerReplaced.set() {
             logger.withLock { $0 = fallback }
-            onLoggerFailed?(error)
+            outsideCallback { onLoggerFailed?(error) }
         }
     }
 
     /// The observer failed: switch it off once and say so once.
     package func reportObserverFailure(_ error: any Error) {
         if observerFailed.set() {
-            onObserverFailed?(error)
+            outsideCallback { onObserverFailed?(error) }
         }
+    }
+
+    // The failure report is the SDK's own line, not the callback's: it is written even when the
+    // wrapper reports from inside the callback that failed.
+    private func outsideCallback(_ body: () -> Void) {
+        let dictionary = Thread.current.threadDictionary
+        let wasInside = dictionary[Self.threadKey] as? Bool == true
+        if wasInside { dictionary.removeObject(forKey: Self.threadKey) }
+        defer { if wasInside { dictionary[Self.threadKey] = true } }
+        body()
     }
 
     // Re-entrant calls on the same thread are skipped.

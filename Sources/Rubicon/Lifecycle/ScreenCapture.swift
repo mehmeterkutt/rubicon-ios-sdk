@@ -116,7 +116,16 @@ final class ScreenCapture: @unchecked Sendable {
             if typeName.contains("UIHostingController") { return nil }
             guard Bundle(for: type) == shared.appBundle.current else { return nil }
             if let named = type as? ScreenNamed.Type { return (named.screenName, ScreenNames.declared) }
+            if let named = objcScreenName(of: type) { return (named, ScreenNames.declared) }
             return (ScreenNames.name(forClass: typeName), ScreenNames.fromClass)
+        }
+
+        /// The Objective-C form of `ScreenNamed`: the class method `rbnScreenName` of `RBNScreenNamed`
+        /// in the wrapper, found by selector because this module does not see the wrapper.
+        private static func objcScreenName(of type: UIViewController.Type) -> String? {
+            let selector = NSSelectorFromString("rbnScreenName")
+            guard type.responds(to: selector) else { return nil }
+            return (type as AnyObject).perform(selector)?.takeUnretainedValue() as? String
         }
 
         private func resendLastScreen() {

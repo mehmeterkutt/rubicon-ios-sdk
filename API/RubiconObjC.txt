@@ -1,0 +1,144 @@
+swift.class RBNAnalytics: @objc(RBNAnalytics) final class RBNAnalytics
+swift.class RBNAutocaptureConfiguration: @objc(RBNAutocaptureConfiguration) final class RBNAutocaptureConfiguration
+swift.class RBNConfiguration: @objc(RBNConfiguration) final class RBNConfiguration
+swift.class RBNContextConfiguration: @objc(RBNContextConfiguration) final class RBNContextConfiguration
+swift.class RBNEvent: @objc(RBNEvent) class RBNEvent
+swift.class RBNEventUpdate: @objc(RBNEventUpdate) final class RBNEventUpdate
+swift.class RBNFlushConfiguration: @objc(RBNFlushConfiguration) final class RBNFlushConfiguration
+swift.class RBNIdentifyEvent: @objc(RBNIdentifyEvent) final class RBNIdentifyEvent
+swift.class RBNLoggingConfiguration: @objc(RBNLoggingConfiguration) final class RBNLoggingConfiguration
+swift.class RBNNetworkConfiguration: @objc(RBNNetworkConfiguration) final class RBNNetworkConfiguration
+swift.class RBNNetworkObserver: @objc(RBNNetworkObserver) final class RBNNetworkObserver
+swift.class RBNPrivacyConfiguration: @objc(RBNPrivacyConfiguration) final class RBNPrivacyConfiguration
+swift.class RBNScreenEvent: @objc(RBNScreenEvent) final class RBNScreenEvent
+swift.class RBNSessionConfiguration: @objc(RBNSessionConfiguration) final class RBNSessionConfiguration
+swift.class RBNTrackEvent: @objc(RBNTrackEvent) final class RBNTrackEvent
+swift.enum RBNAutocapture: @objc enum RBNAutocapture
+swift.enum RBNConsent: @objc enum RBNConsent
+swift.enum RBNContextField: @objc enum RBNContextField
+swift.enum RBNDropReason: @objc enum RBNDropReason
+swift.enum RBNEventSource: @objc enum RBNEventSource
+swift.enum RBNEventUpdateKind: @objc enum RBNEventUpdateKind
+swift.enum RBNLogLevel: @objc enum RBNLogLevel
+swift.enum.case RBNAutocapture.appLifecycle: case appLifecycle
+swift.enum.case RBNAutocapture.deepLinks: case deepLinks
+swift.enum.case RBNAutocapture.installUpdate: case installUpdate
+swift.enum.case RBNAutocapture.networkRequests: case networkRequests
+swift.enum.case RBNAutocapture.screenViews: case screenViews
+swift.enum.case RBNAutocapture.sessions: case sessions
+swift.enum.case RBNConsent.granted: case granted
+swift.enum.case RBNConsent.pending: case pending
+swift.enum.case RBNContextField.appBuild: case appBuild
+swift.enum.case RBNContextField.appName: case appName
+swift.enum.case RBNContextField.appNamespace: case appNamespace
+swift.enum.case RBNContextField.appVersion: case appVersion
+swift.enum.case RBNContextField.deviceIsEmulator: case deviceIsEmulator
+swift.enum.case RBNContextField.deviceManufacturer: case deviceManufacturer
+swift.enum.case RBNContextField.deviceModel: case deviceModel
+swift.enum.case RBNContextField.deviceType: case deviceType
+swift.enum.case RBNContextField.locale: case locale
+swift.enum.case RBNContextField.networkType: case networkType
+swift.enum.case RBNContextField.osName: case osName
+swift.enum.case RBNContextField.osVersion: case osVersion
+swift.enum.case RBNContextField.screenDensity: case screenDensity
+swift.enum.case RBNContextField.screenHeight: case screenHeight
+swift.enum.case RBNContextField.screenWidth: case screenWidth
+swift.enum.case RBNContextField.timezone: case timezone
+swift.enum.case RBNDropReason.apiKeyChanged: case apiKeyChanged
+swift.enum.case RBNDropReason.backpressure: case backpressure
+swift.enum.case RBNDropReason.beforeSend: case beforeSend
+swift.enum.case RBNDropReason.corrupt: case corrupt
+swift.enum.case RBNDropReason.expired: case expired
+swift.enum.case RBNDropReason.oversize: case oversize
+swift.enum.case RBNDropReason.queueFull: case queueFull
+swift.enum.case RBNDropReason.rejected: case rejected
+swift.enum.case RBNDropReason.retryExhausted: case retryExhausted
+swift.enum.case RBNDropReason.storageError: case storageError
+swift.enum.case RBNEventSource.app: case app
+swift.enum.case RBNEventSource.auto: case auto
+swift.enum.case RBNEventUpdateKind.dropped: case dropped
+swift.enum.case RBNEventUpdateKind.queued: case queued
+swift.enum.case RBNEventUpdateKind.sent: case sent
+swift.enum.case RBNLogLevel.debug: case debug
+swift.enum.case RBNLogLevel.error: case error
+swift.enum.case RBNLogLevel.info: case info
+swift.enum.case RBNLogLevel.off: case off
+swift.enum.case RBNLogLevel.warn: case warn
+swift.init RBNConfiguration.init(apiKey:): @objc init(apiKey: String)
+swift.init RBNNetworkObserver.init(analytics:hosts:): @objc convenience init(analytics: RBNAnalytics, hosts: Set<String>)
+swift.init RBNNetworkObserver.init(analytics:hosts:maskPathIds:): @objc init(analytics: RBNAnalytics, hosts: Set<String>, maskPathIds: Bool)
+swift.method RBNAnalytics.clearLocalData(): @objc func clearLocalData()
+swift.method RBNAnalytics.flush(): @objc func flush()
+swift.method RBNAnalytics.identifyUser(_:): @objc func identifyUser(_ userId: String)
+swift.method RBNAnalytics.identifyUser(_:traits:): @objc func identifyUser(_ userId: String, traits: [String : Any])
+swift.method RBNAnalytics.optIn(): @objc func optIn()
+swift.method RBNAnalytics.optOut(): @objc func optOut()
+swift.method RBNAnalytics.registerSuperProperty(_:value:): @objc func registerSuperProperty(_ key: String, value: Any)
+swift.method RBNAnalytics.reset(): @objc func reset()
+swift.method RBNAnalytics.trackDeepLink(_:referrer:): @objc func trackDeepLink(_ url: URL, referrer: String?)
+swift.method RBNAnalytics.trackDeepLink(withActivity:): @objc func trackDeepLink(withActivity activity: NSUserActivity)
+swift.method RBNAnalytics.trackEvent(_:): @objc func trackEvent(_ name: String)
+swift.method RBNAnalytics.trackEvent(_:properties:): @objc func trackEvent(_ name: String, properties: [String : Any])
+swift.method RBNAnalytics.trackScreen(_:): @objc func trackScreen(_ name: String)
+swift.method RBNAnalytics.trackScreen(_:properties:): @objc func trackScreen(_ name: String, properties: [String : Any])
+swift.method RBNAnalytics.unregisterSuperProperty(_:): @objc func unregisterSuperProperty(_ key: String)
+swift.method RBNAutocaptureConfiguration.disable(_:): @objc func disable(_ type: RBNAutocapture)
+swift.method RBNAutocaptureConfiguration.enable(_:): @objc func enable(_ type: RBNAutocapture)
+swift.method RBNAutocaptureConfiguration.isEnabled(_:): @objc func isEnabled(_ type: RBNAutocapture) -> Bool
+swift.method RBNConfiguration.addBeforeSend(_:): @objc func addBeforeSend(_ block: @escaping RBNBeforeSend)
+swift.method RBNConfiguration.removeAllBeforeSend(): @objc func removeAllBeforeSend()
+swift.method RBNContextConfiguration.disable(_:): @objc func disable(_ field: RBNContextField)
+swift.method RBNContextConfiguration.enable(_:): @objc func enable(_ field: RBNContextField)
+swift.method RBNContextConfiguration.isDisabled(_:): @objc func isDisabled(_ field: RBNContextField) -> Bool
+swift.method RBNNetworkObserver.urlSession(_:task:didCompleteWithError:): @objc(URLSession:task:didCompleteWithError:) func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?)
+swift.method RBNNetworkObserver.urlSession(_:task:didFinishCollecting:): @objc(URLSession:task:didFinishCollectingMetrics:) func urlSession(_ session: URLSession, task: URLSessionTask, didFinishCollecting metrics: URLSessionTaskMetrics)
+swift.property RBNAnalytics.analytics: let analytics: any Analytics
+swift.property RBNAnalytics.deviceId: @objc var deviceId: String { get }
+swift.property RBNAnalytics.isOptedOut: @objc var isOptedOut: Bool { get }
+swift.property RBNConfiguration.apiKey: @objc var apiKey: String { get }
+swift.property RBNConfiguration.autocapture: @objc lazy var autocapture: RBNAutocaptureConfiguration { get set }
+swift.property RBNConfiguration.beforeSendCount: @objc var beforeSendCount: Int { get }
+swift.property RBNConfiguration.context: @objc lazy var context: RBNContextConfiguration { get set }
+swift.property RBNConfiguration.debug: @objc var debug: Bool { get set }
+swift.property RBNConfiguration.flush: @objc lazy var flush: RBNFlushConfiguration { get set }
+swift.property RBNConfiguration.host: @objc var host: String { get set }
+swift.property RBNConfiguration.logging: @objc lazy var logging: RBNLoggingConfiguration { get set }
+swift.property RBNConfiguration.network: @objc lazy var network: RBNNetworkConfiguration { get set }
+swift.property RBNConfiguration.privacy: @objc lazy var privacy: RBNPrivacyConfiguration { get set }
+swift.property RBNConfiguration.session: @objc lazy var session: RBNSessionConfiguration { get set }
+swift.property RBNDropReason.name: var name: String { get }
+swift.property RBNEvent.context: @objc var context: [String : Any] { get }
+swift.property RBNEvent.deviceId: @objc var deviceId: String { get }
+swift.property RBNEvent.messageId: @objc var messageId: String { get }
+swift.property RBNEvent.source: @objc var source: RBNEventSource { get }
+swift.property RBNEvent.timestamp: @objc var timestamp: Date { get }
+swift.property RBNEvent.userId: @objc var userId: String? { get }
+swift.property RBNEventUpdate.description: override var description: String { get }
+swift.property RBNEventUpdate.dropReason: @objc let dropReason: RBNDropReason
+swift.property RBNEventUpdate.dropReasonName: @objc var dropReasonName: String { get }
+swift.property RBNEventUpdate.event: @objc let event: RBNEvent?
+swift.property RBNEventUpdate.kind: @objc let kind: RBNEventUpdateKind
+swift.property RBNEventUpdate.messageIds: @objc let messageIds: [String]
+swift.property RBNFlushConfiguration.at: @objc var at: Int { get set }
+swift.property RBNFlushConfiguration.immediateEvents: @objc var immediateEvents: Set<String> { get set }
+swift.property RBNFlushConfiguration.intervalMs: @objc var intervalMs: Int64 { get set }
+swift.property RBNIdentifyEvent.traits: @objc var traits: [String : Any] { get set }
+swift.property RBNLoggingConfiguration.eventObserver: @objc var eventObserver: RBNEventObserver? { get set }
+swift.property RBNLoggingConfiguration.level: @objc var level: RBNLogLevel { get set }
+swift.property RBNLoggingConfiguration.logger: @objc var logger: RBNLogger? { get set }
+swift.property RBNLoggingConfiguration.sendDiagnostics: @objc var sendDiagnostics: Bool { get set }
+swift.property RBNNetworkConfiguration.headers: @objc var headers: [String : String] { get set }
+swift.property RBNPrivacyConfiguration.defaultConsent: @objc var defaultConsent: RBNConsent { get set }
+swift.property RBNPrivacyConfiguration.persistConsent: @objc var persistConsent: Bool { get set }
+swift.property RBNScreenEvent.name: @objc var name: String { get set }
+swift.property RBNScreenEvent.properties: @objc var properties: [String : Any] { get set }
+swift.property RBNSessionConfiguration.backgroundTimeoutMs: @objc var backgroundTimeoutMs: Int64 { get set }
+swift.property RBNTrackEvent.name: @objc var name: String { get set }
+swift.property RBNTrackEvent.properties: @objc var properties: [String : Any] { get set }
+swift.protocol RBNScreenNamed: @objc(RBNScreenNamed) protocol RBNScreenNamed
+swift.type.method RBNAnalytics.make(configuration:): @objc static func make(configuration: RBNConfiguration) -> RBNAnalytics
+swift.type.method RBNScreenNamed.rbnScreenName(): @objc static func rbnScreenName() -> String
+swift.type.property RBNAnalytics.sdkVersion: @objc static var sdkVersion: String { get }
+swift.typealias RBNBeforeSend: typealias RBNBeforeSend = @Sendable (RBNEvent) -> RBNEvent?
+swift.typealias RBNEventObserver: typealias RBNEventObserver = @Sendable (RBNEventUpdate) -> Void
+swift.typealias RBNLogger: typealias RBNLogger = @Sendable (RBNLogLevel, String, NSError?) -> Void

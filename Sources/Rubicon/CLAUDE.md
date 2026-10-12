@@ -61,7 +61,8 @@ collection, the network monitor, the HTTP transport's `URLSession`, `RubiconNetw
   starts, `class_addMethod` then `class_replaceMethod` with `method_exchangeImplementations` as the
   fallback, never reversed; a failed installation is one WARN. Nothing else is ever swizzled.
 - Screen names (iOS Lifecycle 2): `(type(of: controller) as? ScreenNamed.Type)?.screenName`
-  (`name_source: "annotation"`), else the class name without a module prefix and without
+  (`name_source: "annotation"`), else the class method `rbnScreenName` found by selector (the
+  wrapper's `RBNScreenNamed`; this target does not see the wrapper), else the class name without a module prefix and without
   `ViewController` (`name_source: "class"`); never the title. Skip classes from outside the main
   bundle, `UIHostingController` and its subclasses, container controllers; resolve the visible
   controller through presented, `visibleViewController`, `selectedViewController`, first child. The

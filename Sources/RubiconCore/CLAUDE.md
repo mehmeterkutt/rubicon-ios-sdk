@@ -166,6 +166,8 @@ public types at the top level of the target.
 - Stores (Disk 7): whole-file JSON with `"v"`, `.tmp` + sync + rename, coalesced on the writer.
   Missing -> create; unreadable (corrupt, newer `v`) -> in-memory, never overwrite; locked -> wait.
   `v` is the file format; raising it is a design discussion with the user.
+- `PropertyValue.foundationValue` and `EventWire.contextObject` are `package` for the Objective-C
+  wrapper, which shows properties and the context as `NSDictionary`; nothing else converts back.
 - Only the internal conversion layer (`json/`) touches `JSONSerialization`: writing with
   `.sortedKeys` from the `PropertyValue` tree (`NSNull` for null, `NSNumber` from the typed enum so
   `true` and `1` stay apart); reading with typed checks and the `CFBoolean` rule; nothing may depend
@@ -222,6 +224,9 @@ public types at the top level of the target.
   under `com.rubicon.analytics.inCallback`; log lines and observer updates caused on that thread
   while it is set are ignored. The "threw" halves of Logging 4b exist only in the Objective-C
   wrapper; a Swift closure that traps stops the app, and the documentation says so (iOS Logging 2).
+  The wrapper reports a failure from inside the failing callback, so `reportLoggerFailure` and
+  `reportObserverFailure` run their handlers with the flag lifted: the `LOGGER_THREW` or
+  `OBSERVER_THREW` line is the SDK's own and is always written.
 - `typealias EventObserver = @Sendable (EventUpdate) -> Void`; `enum EventUpdate: Sendable { case
   queued(any Event), sent(messageIds:), dropped(messageIds:reason:) }`, not `@frozen`, called on the
   writer and uploader queues, never the main thread; `description` gives ids or counts only.
