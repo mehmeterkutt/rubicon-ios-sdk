@@ -45,8 +45,8 @@ Scripts/test-simulator.sh [15]   # RubiconTests and RubiconObjCTests on the newe
 Scripts/build-consumer-apps.sh   # XcodeGen + xcodebuild for Swift5App, Swift6App, ObjCApp
 Scripts/api-diff.sh --update  # after a public API change; commit API/*.txt
 Scripts/refresh-golden.sh     # copy the Android golden files again (ANDROID_SDK_DIR overrides the path)
-swift test --sanitize=thread  # Thread Sanitizer on the core tests (nightly in CI)
-RUBICON_STRESS=1 swift test --filter CoreIntegrationTests/stress   # the stress suite; nightly, not per pull request
+swift test --sanitize=thread  # Thread Sanitizer on the core tests (the Nightly workflow, run by hand)
+RUBICON_STRESS=1 swift test --filter CoreIntegrationTests/stress   # the stress suite; the Nightly workflow, not per pull request
 ```
 
 Local toolchain is Xcode 27 (Swift 6.4); the release toolchain is Xcode 26.6 on the `macos-26`
