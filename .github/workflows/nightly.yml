@@ -1,10 +1,10 @@
 name: Nightly
 
 # The matrix of D11 and Thread Sanitizer: the newest simulator runtime and the oldest one Xcode 26.6
-# can install, and the core tests under TSan. Nightly and on demand, never per pull request.
+# can install, and the core tests under TSan. On demand only, never per pull request: the daily
+# schedule was removed on 2026-10-14 because macOS minutes count ten times against the
+# organisation's Free plan quota (plan section 15). Run it from the Actions tab before a release.
 on:
-  schedule:
-    - cron: "0 3 * * *"
   workflow_dispatch:
 
 permissions:
