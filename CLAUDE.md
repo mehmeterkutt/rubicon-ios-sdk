@@ -27,7 +27,7 @@ is written here; read them before changing anything.
 Apps add one product, `Rubicon`, which brings `RubiconCore`; Objective-C apps add `RubiconObjC` as
 well (iOS Public API 8). UIKit code lives only in `Rubicon`; when the core needs the platform (clock,
 files, network, lifecycle, context) it declares a protocol that `Rubicon` implements. The demo app and
-its fake backend are a separate repository (`rubicon-team/rubicon-ios-demo`).
+its fake backend are a separate repository (`mehmeterkutt/rubicon-ios-demo`).
 
 ## Commands
 

@@ -11,14 +11,14 @@ serves both.
 
 ## Installation
 
-Xcode: File, Add Package Dependencies, enter `https://github.com/rubicon-team/rubicon-ios-sdk`,
+Xcode: File, Add Package Dependencies, enter `https://github.com/mehmeterkutt/rubicon-ios-sdk`,
 and add the `Rubicon` product to your app target. Objective-C apps add `RubiconObjC` as well.
 
 `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rubicon-team/rubicon-ios-sdk", from: "0.1.0")
+    .package(url: "https://github.com/mehmeterkutt/rubicon-ios-sdk", from: "0.1.0")
 ],
 targets: [
     .target(name: "YourApp", dependencies: [.product(name: "Rubicon", package: "rubicon-ios-sdk")])
