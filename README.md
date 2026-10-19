@@ -351,11 +351,11 @@ update with a `kind`.
 | `Sources/Rubicon` | The iOS target: factory, lifecycle, screen capture, network observer, privacy manifest |
 | `Sources/RubiconObjC` | The Objective-C wrapper |
 | `ConsumerApps/` | Three apps (Swift 5, Swift 6, Objective-C) that build against the package in CI and run the simulator scenarios |
-| `docs/` | `implementation-plan.md`, `wire-format.md`, `issue-codes.md`, `privacy-manifest.md`, `remote-config.md` |
+| `docs/` | `wire-format.md`, `issue-codes.md`, `privacy-manifest.md`, `remote-config.md` |
 | `API/` | The recorded public API; a change here is a public API change |
 
-The design is decided in Confluence (space SD, "Analytics SDK: iOS"); the Android SDK's decision
-pages are the contract both platforms implement. Development: `Scripts/check.sh` runs what CI runs;
+The design is fixed in decision pages kept outside this repository; the Android SDK's decisions
+are the contract both platforms implement. Development: `Scripts/check.sh` runs what CI runs;
 `Scripts/check.sh --all` adds the simulator suite, the consumer apps and the DocC build.
 
 ## License

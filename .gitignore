@@ -13,3 +13,6 @@ Package.resolved
 .idea/
 /ConsumerApps/*/Info.plist
 /ConsumerApps/*/Widget/Info.plist
+
+# Internal working plan, kept locally only
+docs/implementation-plan.md

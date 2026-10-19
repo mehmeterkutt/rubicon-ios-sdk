@@ -4,7 +4,7 @@ The iOS side: the factory, the `Platform` implementations, lifecycle, screens, d
 collection, the network monitor, the HTTP transport's `URLSession`, `RubiconNetworkObserver`, the
 `os.Logger` sink and the privacy manifest. Public API at the top level, implementations under
 `Platform/`, `Lifecycle/` and `Network/`. UIKit imports sit inside `#if canImport(UIKit)` so
-`swift build` on macOS compiles. Pointers such as (iOS Lifecycle 3) name the Confluence decision.
+`swift build` on macOS compiles. Pointers such as (iOS Lifecycle 3) name the design decision.
 
 ## Factory and process
 
